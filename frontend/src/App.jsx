@@ -1,12 +1,8 @@
+import LandingPage from './pages/LandingPage'
 import './App.css'
 
 function App() {
-  return (
-    <div className="app">
-      <h1>DeepRetrieve</h1>
-      <p>Multimodal RAG System</p>
-    </div>
-  )
+  return <LandingPage />
 }
 
 export default App

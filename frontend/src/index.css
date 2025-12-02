@@ -1,11 +1,15 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }
 
+/* Base body styles */
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
-  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #050505;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.05) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 40%);
 }
