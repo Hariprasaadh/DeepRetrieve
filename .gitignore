@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+build/
+dist/
+
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.env.local
+
+# Environment Variables
+.env
+*.env
+
+# IDE / Editor
+.vscode/
+
+
+
+
+# Extracted Content (generated files)
+extracted_content/
+*.csv
+
+    
+
+# Model Cache
+.cache/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+
+
+
+# UV / Package Manager
+# Keep uv.lock for reproducibility, but ignore cache
+.uv/
+
+# Temporary Files
+*.tmp
+*.temp
+tmp/
+temp/
+
+node_modules/
+
+
+
+
+
+
+
