@@ -129,7 +129,7 @@ function HowItWorks() {
   }
 
   return (
-    <section className="py-32 bg-[#030303] relative overflow-hidden">
+    <section className="pt-32 pb-16 bg-[#030303] relative overflow-hidden">
       {/* Background gradient orbs */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl"></div>

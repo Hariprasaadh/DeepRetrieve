@@ -1,29 +1,106 @@
-import { FileText, Image, Brain, CheckCircle, BarChart3, Layers } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Brain, CheckCircle, Layers, Workflow } from 'lucide-react'
 
 function Features() {
-  const features = [
-    {
-      icon: Brain,
-      title: 'Multi-step Reasoning',
-      description: 'Advanced cognitive processing for complex queries across documents.',
-      color: 'indigo',
-      gradient: 'from-indigo-500/20 to-purple-500/20'
-    },
-    {
-      icon: CheckCircle,
-      title: 'Context-Aware Retrieval',
-      description: 'Understands document structure, not just keywords.',
-      color: 'cyan',
-      gradient: 'from-cyan-500/20 to-blue-500/20'
-    },
-    {
-      icon: Layers,
-      title: 'Multi-Modal Support',
-      description: 'Seamlessly integrate and process text, images, and tables.',
-      color: 'purple',
-      gradient: 'from-purple-500/20 to-pink-500/20'
-    }
+  const [activeSlide, setActiveSlide] = useState(0)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+
+  const featureGroups = [
+    // Slide 1
+    [
+      {
+        icon: Brain,
+        title: 'Multi-step Reasoning',
+        description: 'Advanced cognitive processing for complex queries across documents.',
+        color: 'indigo',
+        gradient: 'from-indigo-500/20 to-purple-500/20'
+      },
+      {
+        icon: CheckCircle,
+        title: 'Context-Aware Retrieval',
+        description: 'Understands document structure, not just keywords.',
+        color: 'cyan',
+        gradient: 'from-cyan-500/20 to-blue-500/20'
+      },
+      {
+        icon: Layers,
+        title: 'Multi-Modal Support',
+        description: 'Seamlessly integrate and process text, images, and tables.',
+        color: 'purple',
+        gradient: 'from-purple-500/20 to-pink-500/20'
+      }
+    ],
+    // Slide 2 - MCP Features
+    [
+      {
+        icon: Workflow,
+        title: 'MCP Tool Orchestration',
+        description: 'Exposes vector retriever and web search as formal tools for autonomous multi-step retrieval.',
+        color: 'cyan',
+        gradient: 'from-cyan-500/20 to-teal-500/20'
+      },
+      {
+        icon: Brain,
+        title: 'Adaptive Agent Control',
+        description: 'MCP turns a static RAG pipeline into an adaptive, tool-using agent with fallback logic.',
+        color: 'indigo',
+        gradient: 'from-indigo-500/20 to-blue-500/20'
+      },
+      {
+        icon: Layers,
+        title: 'Agentic RAG Pipeline',
+        description: 'LLM autonomously orchestrates retrieval steps, choosing the right tool for each query.',
+        color: 'purple',
+        gradient: 'from-purple-500/20 to-indigo-500/20'
+      }
+    ],
+    // Slide 3
+    [
+      {
+        icon: CheckCircle,
+        title: 'Binary Quantization',
+        description: '10x less storage with Qdrant\'s binary quantization while maintaining accuracy.',
+        color: 'cyan',
+        gradient: 'from-cyan-500/20 to-blue-500/20'
+      },
+      {
+        icon: Brain,
+        title: 'CLIP Embeddings',
+        description: '512D vectors that understand both text and images in the same embedding space.',
+        color: 'indigo',
+        gradient: 'from-indigo-500/20 to-purple-500/20'
+      },
+      {
+        icon: Workflow,
+        title: 'Gemini 2.0 Integration',
+        description: 'Powered by Google\'s latest multimodal LLM for superior reasoning.',
+        color: 'purple',
+        gradient: 'from-purple-500/20 to-pink-500/20'
+      }
+    ]
   ]
+
+  // Auto-slide effect
+  useEffect(() => {
+    if (!isAutoPlaying) return
+
+    const interval = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % featureGroups.length)
+    }, 5000) // Change slide every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [isAutoPlaying, featureGroups.length])
+
+  // Pause auto-play on hover
+  const handleMouseEnter = () => setIsAutoPlaying(false)
+  const handleMouseLeave = () => setIsAutoPlaying(true)
+
+  const handleDotClick = (index) => {
+    setActiveSlide(index)
+    setIsAutoPlaying(false)
+    // Resume auto-play after 10 seconds of inactivity
+    setTimeout(() => setIsAutoPlaying(true), 10000)
+  }
 
   const colorClasses = {
     indigo: {
@@ -43,8 +120,10 @@ function Features() {
     }
   }
 
+  const currentFeatures = featureGroups[activeSlide]
+
   return (
-    <section id="features" className="py-32 relative overflow-hidden">
+    <section id="features" className="pt-32 pb-32 relative overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/5 rounded-full blur-3xl"></div>
@@ -67,14 +146,19 @@ function Features() {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map((feature, index) => {
+        <div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-500"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {currentFeatures.map((feature, index) => {
             const Icon = feature.icon
             const colors = colorClasses[feature.color]
             return (
               <div 
-                key={index}
-                className={`group relative p-8 rounded-2xl border border-white/10 bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:border-white/20 transition-all duration-500`}
+                key={`${activeSlide}-${index}`}
+                className={`group relative p-8 rounded-2xl border border-white/10 bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:border-white/20 transition-all duration-500 animate-fadeIn`}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Decorative Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-1.5">
@@ -109,11 +193,29 @@ function Features() {
           })}
         </div>
 
-        {/* Bottom Carousel Dots */}
-        <div className="flex justify-center gap-2 mt-12">
-          <div className="w-8 h-2 rounded-full bg-indigo-500"></div>
-          <div className="w-2 h-2 rounded-full bg-white/20"></div>
-          <div className="w-2 h-2 rounded-full bg-white/20"></div>
+        {/* Interactive Carousel Dots */}
+        <div className="flex justify-center items-center gap-3 mt-12">
+          {featureGroups.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => handleDotClick(index)}
+              className={`transition-all duration-300 rounded-full ${
+                activeSlide === index 
+                  ? 'w-8 h-2 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' 
+                  : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Slide Labels */}
+        <div className="flex justify-center mt-4">
+          <span className="text-sm text-slate-500">
+            {activeSlide === 0 && 'Core Features'}
+            {activeSlide === 1 && 'MCP Integration'}
+            {activeSlide === 2 && 'Technical Stack'}
+          </span>
         </div>
       </div>
     </section>

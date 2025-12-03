@@ -41,7 +41,7 @@ function Footer() {
           </div>
         </div>
         <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-600">© 2024 DeepRetrieve Inc.</p>
+          <p className="text-xs text-slate-600">© 2025 DeepRetrieve Inc.</p>
           <div className="flex gap-6">
             <Twitter className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
             <Github className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
