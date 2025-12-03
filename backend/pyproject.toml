@@ -1,16 +1,23 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "DeepRetrieve - MCP-Powered Agentic Multimodal RAG"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "camelot>=12.6.29",
+    "camelot-py>=0.11.0",
+    "fastmcp>=2.9.2",
     "google-generativeai>=0.8.5",
     "langchain>=1.1.0",
+    "opencv-python>=4.11.0.90",
+    "pillow>=11.3.0",
     "pymupdf>=1.26.6",
     "python-dotenv>=1.2.1",
     "qdrant-client>=1.16.1",
+    "tavily-python>=0.7.3",
     "torch>=2.9.1",
     "transformers>=4.57.3",
 ]
+
+[project.scripts]
+deepretrieve = "mcp_server.server:run_server"
