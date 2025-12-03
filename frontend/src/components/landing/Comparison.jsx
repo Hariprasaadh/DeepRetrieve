@@ -86,22 +86,22 @@ function Comparison() {
         </div>
 
         {/* Comparison Table */}
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-gradient-to-b from-[#0a0a0a] to-[#080808] shadow-2xl">
+        <div className="rounded-2xl border border-white/10 overflow-hidden bg-gradient-to-b from-[#0a0a0a] to-[#080808] shadow-2xl overflow-x-auto">
           {/* Table Header */}
-          <div className="grid grid-cols-3 gap-4 p-6 bg-gradient-to-r from-[#0c0c0c] via-[#0a0a0a] to-[#0c0c0c] border-b border-white/5">
-            <div className="text-sm font-medium text-slate-400 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 p-4 sm:p-6 bg-gradient-to-r from-[#0c0c0c] via-[#0a0a0a] to-[#0c0c0c] border-b border-white/5 min-w-[500px] sm:min-w-0">
+            <div className="text-xs sm:text-sm font-medium text-slate-400 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-400 hidden sm:block"></div>
               Feature
             </div>
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
-                <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,1)] animate-pulse"></div>
-                <span className="text-sm font-medium text-indigo-200">DeepRetrieve</span>
+              <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,1)] animate-pulse"></div>
+                <span className="text-xs sm:text-sm font-medium text-indigo-200">DeepRetrieve</span>
               </div>
             </div>
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-                <span className="text-sm font-medium text-slate-500">Simple RAG</span>
+              <div className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 border border-white/10">
+                <span className="text-xs sm:text-sm font-medium text-slate-500">Simple RAG</span>
               </div>
             </div>
           </div>
@@ -113,33 +113,33 @@ function Comparison() {
               return (
                 <div 
                   key={index} 
-                  className="grid grid-cols-3 gap-4 p-6 hover:bg-white/[0.02] transition-all duration-200 group"
+                  className="grid grid-cols-3 gap-2 sm:gap-4 p-4 sm:p-6 hover:bg-white/[0.02] transition-all duration-200 group min-w-[500px] sm:min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-400 group-hover:from-indigo-500/20 group-hover:to-purple-500/10 transition-all duration-200 border border-white/5 group-hover:border-indigo-500/20">
-                      <Icon className="w-4 h-4" strokeWidth={1.5} />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-400 group-hover:from-indigo-500/20 group-hover:to-purple-500/10 transition-all duration-200 border border-white/5 group-hover:border-indigo-500/20 shrink-0">
+                      <Icon className="w-3 h-3 sm:w-4 sm:h-4" strokeWidth={1.5} />
                     </div>
-                    <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{item.feature}</span>
+                    <span className="text-xs sm:text-sm text-slate-300 group-hover:text-white transition-colors">{item.feature}</span>
                   </div>
                   <div className="flex justify-center items-center">
                     {item.deepRetrieve ? (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500/20 to-green-500/5 border border-green-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-                        <Check className="w-4 h-4 text-green-400" strokeWidth={2.5} />
+                      <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-green-500/20 to-green-500/5 border border-green-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+                        <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" strokeWidth={2.5} />
                       </div>
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                        <X className="w-4 h-4 text-red-400/70" strokeWidth={2} />
+                      <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                        <X className="w-3 h-3 sm:w-4 sm:h-4 text-red-400/70" strokeWidth={2} />
                       </div>
                     )}
                   </div>
                   <div className="flex justify-center items-center">
                     {item.simpleRag ? (
-                      <div className="w-9 h-9 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                        <Check className="w-4 h-4 text-green-400/70" strokeWidth={2} />
+                      <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                        <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-400/70" strokeWidth={2} />
                       </div>
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center opacity-50">
-                        <X className="w-4 h-4 text-red-400" strokeWidth={2} />
+                      <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center opacity-50">
+                        <X className="w-3 h-3 sm:w-4 sm:h-4 text-red-400" strokeWidth={2} />
                       </div>
                     )}
                   </div>

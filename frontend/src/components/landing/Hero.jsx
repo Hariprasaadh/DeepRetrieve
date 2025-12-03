@@ -9,10 +9,11 @@ function Hero() {
           {/* Left Content */}
           <div className="text-center lg:text-left">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-sm font-medium text-indigo-300 mb-8 backdrop-blur-sm shadow-[0_0_20px_rgba(99,102,241,0.15)]">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span>New: Visual Reasoning for Charts &amp; Graphs</span>
-              <ArrowRight className="w-4 h-4 text-indigo-400/50" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs sm:text-sm font-medium text-indigo-300 mb-6 sm:mb-8 backdrop-blur-sm shadow-[0_0_20px_rgba(99,102,241,0.15)]">
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-400" />
+              <span className="hidden sm:inline">New: Visual Reasoning for Charts &amp; Graphs</span>
+              <span className="sm:hidden">Visual Reasoning</span>
+              <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-400/50" />
             </div>
 
             {/* Headline */}
@@ -57,7 +58,7 @@ function Hero() {
           </div>
 
           {/* Right Side - 3D Illustration */}
-          <div className="relative h-[400px] md:h-[500px] lg:h-[550px]">
+          <div className="relative h-[300px] sm:h-[400px] md:h-[500px] lg:h-[550px] hidden sm:block">
             {/* Main glow effects */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-500/20 rounded-full blur-[100px] animate-pulse"></div>
             <div className="absolute top-1/3 right-1/4 w-60 h-60 bg-indigo-500/20 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }}></div>

@@ -132,15 +132,15 @@ function Features() {
 
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-sm font-medium text-indigo-300 mb-6">
-            <span className="flex h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-xs sm:text-sm font-medium text-indigo-300 mb-4 sm:mb-6">
+            <span className="flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
             Intelligent Features
           </div>
-          <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-5">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white tracking-tight mb-4 sm:mb-5">
             Intelligent Features
           </h2>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto px-4 sm:px-0">
             Powered by cutting-edge AI to understand your documents like never before
           </p>
         </div>
@@ -157,7 +157,7 @@ function Features() {
             return (
               <div 
                 key={`${activeSlide}-${index}`}
-                className={`group relative p-8 rounded-2xl border border-white/10 bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:border-white/20 transition-all duration-500 animate-fadeIn`}
+                className={`group relative p-5 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:border-white/20 transition-all duration-500 animate-fadeIn`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Decorative Elements */}
@@ -168,14 +168,14 @@ function Features() {
                 </div>
 
                 {/* Icon with Glow */}
-                <div className={`relative w-14 h-14 rounded-xl ${colors.iconBg} border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 ${colors.glow}`}>
-                  <Icon className={`w-7 h-7 ${colors.iconColor}`} strokeWidth={1.5} />
+                <div className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl ${colors.iconBg} border flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300 ${colors.glow}`}>
+                  <Icon className={`w-5 h-5 sm:w-7 sm:h-7 ${colors.iconColor}`} strokeWidth={1.5} />
                   {/* Glow effect */}
-                  <div className={`absolute inset-0 rounded-xl ${colors.iconBg} blur-xl opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+                  <div className={`absolute inset-0 rounded-lg sm:rounded-xl ${colors.iconBg} blur-xl opacity-50 group-hover:opacity-100 transition-opacity`}></div>
                 </div>
 
                 {/* Mockup Bar */}
-                <div className="flex items-center gap-3 mb-6 p-3 rounded-lg bg-black/20 border border-white/5">
+                <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 p-2.5 sm:p-3 rounded-lg bg-black/20 border border-white/5">
                   <div className={`w-6 h-6 rounded ${colors.iconBg} flex items-center justify-center`}>
                     <Icon className={`w-3 h-3 ${colors.iconColor}`} strokeWidth={2} />
                   </div>
@@ -186,8 +186,8 @@ function Features() {
                 </div>
 
                 {/* Content */}
-                <h3 className="text-xl text-white font-medium mb-3 tracking-tight">{feature.title}</h3>
-                <p className="text-base text-slate-400 leading-relaxed">{feature.description}</p>
+                <h3 className="text-lg sm:text-xl text-white font-medium mb-2 sm:mb-3 tracking-tight">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-slate-400 leading-relaxed">{feature.description}</p>
               </div>
             )
           })}

@@ -136,16 +136,16 @@ function HowItWorks() {
 
       <div className="max-w-7xl mx-auto px-6 relative">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-20">
-          <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 sm:gap-4 mb-12 sm:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white tracking-tight">
             How it works.
           </h2>
           <div className="hidden md:block w-px h-12 bg-gradient-to-b from-transparent via-white/30 to-transparent mx-4"></div>
-          <p className="text-lg text-slate-500">Three simple steps to query smarter</p>
+          <p className="text-base sm:text-lg text-slate-500">Three simple steps to query smarter</p>
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {steps.map((step, index) => {
             const Icon = step.icon
             const colors = colorClasses[step.color]
@@ -159,21 +159,21 @@ function HowItWorks() {
                 )}
 
                 {/* Step Badge */}
-                <div className={`inline-flex items-center px-4 py-1.5 rounded-full border ${colors.badge} text-xs font-medium mb-6 backdrop-blur-sm`}>
+                <div className={`inline-flex items-center px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border ${colors.badge} text-xs font-medium mb-4 sm:mb-6 backdrop-blur-sm`}>
                   <span className="mr-2 w-1.5 h-1.5 rounded-full bg-current"></span>
                   STEP {step.step}
                 </div>
 
                 {/* Mockup Card */}
-                <div className={`rounded-2xl border border-white/5 bg-[#080808]/80 p-5 mb-6 group-hover:border-white/10 transition-all duration-300 ${colors.glow} group-hover:scale-[1.02]`}>
+                <div className={`rounded-xl sm:rounded-2xl border border-white/5 bg-[#080808]/80 p-4 sm:p-5 mb-4 sm:mb-6 group-hover:border-white/10 transition-all duration-300 ${colors.glow} group-hover:scale-[1.02]`}>
                   {step.mockup}
                 </div>
 
                 {/* Content */}
-                <h3 className="text-2xl font-medium text-white mb-3 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-medium text-white mb-2 sm:mb-3 tracking-tight">
                   {step.title}
                 </h3>
-                <p className="text-base text-slate-500 leading-relaxed">
+                <p className="text-sm sm:text-base text-slate-500 leading-relaxed">
                   {step.description}
                 </p>
               </div>

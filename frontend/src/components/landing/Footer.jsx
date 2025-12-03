@@ -2,9 +2,9 @@ import { Layers, Twitter, Github } from 'lucide-react'
 
 function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-[#020202] pt-20 pb-10">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
+    <footer className="border-t border-white/5 bg-[#020202] pt-12 sm:pt-20 pb-8 sm:pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 mb-10 sm:mb-16">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-3 mb-6">
               <Layers className="w-6 h-6 text-indigo-500" strokeWidth={1.5} />
@@ -40,8 +40,8 @@ function Footer() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-600">© 2025 DeepRetrieve Inc.</p>
+        <div className="border-t border-white/5 pt-6 sm:pt-10 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
+          <p className="text-xs text-slate-600 text-center md:text-left">© 2025 DeepRetrieve Inc.</p>
           <div className="flex gap-6">
             <Twitter className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
             <Github className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />

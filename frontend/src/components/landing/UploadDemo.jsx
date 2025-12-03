@@ -62,13 +62,13 @@ function UploadDemo() {
 
       <div className="max-w-4xl mx-auto px-6 text-center relative">
         {/* Header with badge */}
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-6">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <span className="text-sm font-medium text-indigo-300">Try It Now</span>
+        <div className="mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 sm:mb-6">
+            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-400" />
+            <span className="text-xs sm:text-sm font-medium text-indigo-300">Try It Now</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-5">Start by dropping a file</h2>
-          <p className="text-lg text-slate-500">No setup required. Just drag and drop.</p>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white tracking-tight mb-4 sm:mb-5">Start by dropping a file</h2>
+          <p className="text-base sm:text-lg text-slate-500">No setup required. Just drag and drop.</p>
         </div>
 
         {!file ? (
@@ -76,7 +76,7 @@ function UploadDemo() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative w-full h-80 border-2 border-dashed rounded-3xl transition-all cursor-pointer flex flex-col items-center justify-center group overflow-hidden ${
+            className={`relative w-full h-64 sm:h-80 border-2 border-dashed rounded-2xl sm:rounded-3xl transition-all cursor-pointer flex flex-col items-center justify-center group overflow-hidden ${
               isDragging 
                 ? 'border-indigo-500/50 bg-indigo-500/10 shadow-[0_0_50px_rgba(99,102,241,0.2)]' 
                 : 'border-white/10 bg-[#080808]/50 hover:bg-[#0a0a0a] hover:border-indigo-500/30'
@@ -99,10 +99,10 @@ function UploadDemo() {
             
             <div className="relative z-10 flex flex-col items-center pointer-events-none">
               {/* Upload icon with glow */}
-              <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 ${isDragging ? 'scale-110' : ''}`}>
-                <UploadCloud className={`w-10 h-10 text-indigo-400 transition-transform ${isDragging ? 'scale-110' : ''}`} strokeWidth={1.5} />
+              <div className={`w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)] flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300 ${isDragging ? 'scale-110' : ''}`}>
+                <UploadCloud className={`w-7 h-7 sm:w-10 sm:h-10 text-indigo-400 transition-transform ${isDragging ? 'scale-110' : ''}`} strokeWidth={1.5} />
               </div>
-              <span className="text-white font-medium text-lg mb-2">Click to upload or drag and drop</span>
+              <span className="text-white font-medium text-base sm:text-lg mb-2">Click to upload or drag and drop</span>
               
               {/* Feature pills */}
               <div className="flex flex-wrap justify-center gap-2 mt-4">
