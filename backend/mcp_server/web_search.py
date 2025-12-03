@@ -107,3 +107,5 @@ def format_web_results_as_context(search_results: Dict[str, Any]) -> str:
         context_parts.append(f"Content: {result.get('content', '')[:500]}...")
     
     return "\n".join(context_parts)
+
+
