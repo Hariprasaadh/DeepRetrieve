@@ -25,7 +25,7 @@ function AppMockup() {
           <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4 px-1">Library</div>
 
           {/* File List */}
-          <div className="space-y-2 flex-1 overflow-y-auto">
+          <div className="space-y-2 flex-1 overflow-hidden">
             {/* Active File */}
             <div className="group flex items-center gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 cursor-pointer">
               <div className="w-9 h-9 rounded-md bg-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -78,7 +78,7 @@ function AppMockup() {
 
           <div className="flex-1 flex overflow-hidden relative">
             {/* PDF Viewer Mock */}
-            <div className="hidden lg:block w-1/2 p-8 overflow-y-auto border-r border-white/5 bg-[#0a0a0a]">
+            <div className="hidden lg:block w-1/2 p-8 overflow-hidden border-r border-white/5 bg-[#0a0a0a]">
               <div className="w-full bg-white rounded shadow-2xl p-12 min-h-[900px] relative overflow-hidden group/pdf transform transition-transform hover:scale-[1.002] duration-500">
                 {/* Fake Document Content */}
                 <div className="h-6 w-2/3 bg-slate-200 rounded mb-10"></div>
@@ -116,7 +116,7 @@ function AppMockup() {
             {/* Chat Interface */}
             <div className="flex-1 flex flex-col relative z-10 bg-[#050505]">
               {/* Chat History */}
-              <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+              <div className="flex-1 p-8 space-y-8 overflow-hidden">
                 {/* User Message */}
                 <div className="flex justify-end">
                   <div className="chat-bubble bg-[#1a1a1a] border border-white/5 text-slate-200 text-sm px-5 py-4 rounded-2xl rounded-tr-sm max-w-[85%] shadow-sm leading-relaxed">
