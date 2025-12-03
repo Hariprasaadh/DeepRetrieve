@@ -4,7 +4,7 @@ from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
 
-# ============== Request Models ==============
+# Request Models 
 
 class SearchRequest(BaseModel):
     """Request model for text search"""
@@ -48,7 +48,7 @@ class UploadPDFRequest(BaseModel):
     source_name: Optional[str] = Field(default=None, description="Custom name for the source")
 
 
-# ============== Response Models ==============
+# Response Models 
 
 class SearchResult(BaseModel):
     """Single search result"""

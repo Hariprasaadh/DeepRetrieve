@@ -7,26 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
 from .models import HealthResponse
 
-from mcp_server.retriever import get_qdrant_client, create_collection
-from mcp_server.embeddings import get_clip_model
-from mcp_server.config import COLLECTION_NAME
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize services on startup"""
     print("🚀 Starting DeepRetrieve API...")
+    print("📦 Services will be initialized on first use (lazy loading)")
     
-    # Initialize CLIP model (lazy load on first use)
-    print("📦 CLIP model will be loaded on first use")
-    
-    # Initialize Qdrant connection
-    try:
-        client = get_qdrant_client()
-        create_collection(COLLECTION_NAME)
-        print("✅ Qdrant connected")
-    except Exception as e:
-        print(f"⚠️ Qdrant connection failed: {e}")
+    # Don't initialize heavy services at startup - let them lazy load
+    # This prevents memory issues on free tier hosting
     
     yield
     
@@ -57,17 +46,30 @@ app.include_router(router, prefix="/api/v1", tags=["RAG"])
 @app.get("/", response_model=HealthResponse)
 async def root():
     """Health check endpoint"""
-    # Check services
+    return HealthResponse(
+        status="healthy",
+        version="1.0.0",
+        services={
+            "api": True
+        }
+    )
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Detailed health check - checks all services"""
     qdrant_ok = False
     clip_ok = False
     
     try:
+        from mcp_server.retriever import get_qdrant_client
         get_qdrant_client()
         qdrant_ok = True
     except:
         pass
     
     try:
+        from mcp_server.embeddings import get_clip_model
         get_clip_model()
         clip_ok = True
     except:
@@ -81,9 +83,3 @@ async def root():
             "clip": clip_ok
         }
     )
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Detailed health check"""
-    return await root()

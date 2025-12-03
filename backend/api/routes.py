@@ -153,7 +153,6 @@ async def hybrid_search_endpoint(request: HybridSearchRequest):
 
 
 # Generation Endpoints 
-
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_answer(request: GenerateRequest):
     """Generate an answer using the LLM"""
@@ -208,7 +207,6 @@ async def rag_query(request: RAGQueryRequest):
 
 
 # Upload Endpoints       
-
 @router.post("/upload/pdf", response_model=UploadResponse)
 async def upload_pdf(
     file: UploadFile = File(...),
