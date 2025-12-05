@@ -28,7 +28,8 @@ def run_mcp():
 def main():
     parser = argparse.ArgumentParser(description="DeepRetrieve Backend")
     parser.add_argument(
-        "--mode", 
+        "mode",
+        nargs="?",
         choices=["api", "mcp"], 
         default="api",
         help="Run mode: 'api' for FastAPI server, 'mcp' for MCP server"
