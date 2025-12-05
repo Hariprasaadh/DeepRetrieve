@@ -1,7 +1,7 @@
 # Qdrant vector database operations
 
 from typing import List, Dict, Optional
-from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, BinaryQuantization, BinaryQuantizationConfig
 
 from .config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_DIM
@@ -68,21 +68,21 @@ def search_similar(
     # Build filter if content type specified
     query_filter = None
     if content_type:
-        query_filter = {
-            "must": [{"key": "type", "match": {"value": content_type}}]
-        }
+        query_filter = models.Filter(
+            must=[models.FieldCondition(key="type", match=models.MatchValue(value=content_type))]
+        )
     
-    # Search
-    results = client.search(
+    # Search using query_points (new API)
+    results = client.query_points(
         collection_name=collection_name,
-        query_vector=query_embedding,
+        query=query_embedding,
         limit=top_k,
         query_filter=query_filter
     )
     
     # Format results
     formatted_results = []
-    for result in results:
+    for result in results.points:
         formatted_results.append({
             "score": result.score,
             "type": result.payload.get("type"),
@@ -109,16 +109,16 @@ def search_by_image(
     # Embed the image
     query_embedding = embed_image(image_input)
     
-    # Search
-    results = client.search(
+    # Search using query_points (new API)
+    results = client.query_points(
         collection_name=collection_name,
-        query_vector=query_embedding,
+        query=query_embedding,
         limit=top_k
     )
     
     # Format results
     formatted_results = []
-    for result in results:
+    for result in results.points:
         formatted_results.append({
             "score": result.score,
             "type": result.payload.get("type"),
@@ -144,6 +144,6 @@ def get_collection_info(collection_name: str = COLLECTION_NAME) -> Dict:
     return {
         "exists": True,
         "points_count": info.points_count,
-        "vectors_count": info.vectors_count,
-        "status": info.status
+        "indexed_vectors_count": getattr(info, 'indexed_vectors_count', None),
+        "status": str(info.status)
     }

@@ -23,6 +23,9 @@ EMBEDDING_DIM = 512
 # CLIP Configuration
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
+# Gemini Configuration
+GEMINI_MODEL = "gemini-2.0-flash"
+
 # RAG Configuration
 TOP_K = 5
 RELEVANCE_THRESHOLD = 0.5  # Minimum score to consider context sufficient

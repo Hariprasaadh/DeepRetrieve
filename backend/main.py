@@ -2,10 +2,13 @@
 
 import argparse
 import uvicorn
+import os
 
 
-def run_api(host: str = "0.0.0.0", port: int = 8000, reload: bool = True):
+def run_api(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
     """Run the FastAPI server"""
+    # For Render deployment
+    port = int(os.getenv("PORT", port))
     print(f"🚀 Starting DeepRetrieve API at http://{host}:{port}")
     uvicorn.run(
         "api.app:app",

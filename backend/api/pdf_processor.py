@@ -28,6 +28,21 @@ def ensure_output_folders():
     TABLES_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
+def clean_text(text: str) -> str:
+    """Clean extracted text - remove ML tokens and fix formatting"""
+    # Remove ML model artifacts
+    text = text.replace("<EOS>", "").replace("<pad>", "").replace("<eos>", "").replace("<PAD>", "")
+    # Fix excessive newlines (word per line issue)
+    lines = text.split('\n')
+    # If most lines are single words, join them
+    single_word_lines = sum(1 for line in lines if len(line.split()) <= 1)
+    if single_word_lines > len(lines) * 0.5:
+        text = ' '.join(line.strip() for line in lines if line.strip())
+    # Clean up whitespace
+    text = ' '.join(text.split())
+    return text.strip()
+
+
 def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     """Extract text from PDF pages"""
     doc = fitz.open(pdf_path)
@@ -36,10 +51,11 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     for page_num in range(len(doc)):
         page = doc[page_num]
         text = page.get_text()
+        text = clean_text(text)
         
-        if text.strip():
+        if text and len(text) > 50:  # Skip very short/empty pages
             texts.append({
-                "content": text.strip(),
+                "content": text,
                 "page": page_num + 1,
                 "source": os.path.basename(pdf_path)
             })
