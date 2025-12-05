@@ -157,13 +157,21 @@ async def upload_pdf(file: UploadFile = File(...)):
     
     try:
         from .pdf_processor import process_pdf
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"📄 Starting upload: {file.filename}")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
         
+        logger.info(f"💾 Saved to temp: {tmp_path}")
+        
         try:
+            logger.info("🔄 Processing PDF (this may take 2-5 minutes on free tier)...")
             texts_added, images_added, tables_added = process_pdf(tmp_path)
+            logger.info(f"✅ Done! Added {texts_added} texts, {images_added} images, {tables_added} tables")
             
             return UploadResponse(
                 success=True,
