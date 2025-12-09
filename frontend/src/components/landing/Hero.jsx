@@ -1,11 +1,12 @@
 import { ArrowRight, Sparkles, FileText, Image, Table2, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 function Hero() {
   return (
     <div className="relative z-10 mb-20">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-          
+
           {/* Left Content */}
           <div className="text-center lg:text-left">
             {/* Badge */}
@@ -24,7 +25,7 @@ function Hero() {
               <br />
               <span className="text-white/70">of Agentic RAG</span>
             </h1>
-            
+
             {/* Description */}
             <p className="text-base md:text-lg text-slate-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
               Upload PDFs and diagrams. DeepRetrieve understands context, reads fine print, and helps you work <span className="text-white font-medium">10x faster</span> with visual reasoning.
@@ -32,8 +33,8 @@ function Hero() {
 
             {/* CTA Button */}
             <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
-              <a 
-                href="#upload"
+              <Link
+                to="/chat"
                 className="group h-14 px-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-base font-medium transition-all shadow-[0_0_40px_-5px_rgba(99,102,241,0.5)] hover:shadow-[0_0_50px_-5px_rgba(99,102,241,0.7)] flex items-center gap-3 border border-indigo-400/20"
               >
                 Start Retrieving
@@ -41,7 +42,7 @@ function Hero() {
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
                   <ChevronRight className="w-4 h-4 -ml-2 group-hover:translate-x-0.5 transition-transform delay-75" strokeWidth={2} />
                 </div>
-              </a>
+              </Link>
             </div>
 
             {/* Trust indicators */}
@@ -121,7 +122,7 @@ function Hero() {
                   <div className="h-2 w-full bg-white/15 rounded"></div>
                   <div className="h-2 w-3/4 bg-white/10 rounded"></div>
                   <div className="h-2 w-5/6 bg-white/10 rounded"></div>
-                  
+
                   {/* Highlighted chart area */}
                   <div className="h-24 w-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg border border-indigo-400/40 mt-4 relative overflow-hidden">
                     <div className="absolute inset-0 flex items-end justify-around p-3">

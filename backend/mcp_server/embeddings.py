@@ -4,6 +4,7 @@ import torch
 from PIL import Image
 from typing import List
 import io
+import base64
 import requests
 
 from .config import CLIP_MODEL_NAME, USE_HF_SPACE, HF_SPACE_URL, EMBEDDING_DIM

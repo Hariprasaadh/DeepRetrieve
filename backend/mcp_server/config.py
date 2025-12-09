@@ -23,7 +23,7 @@ EMBEDDING_DIM = 512
 # CLIP Configuration
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
-# HuggingFace Space for CLIP embeddings (offload to free GPU)
+# HuggingFace Space for CLIP embeddings 
 USE_HF_SPACE = os.getenv("USE_HF_SPACE", "false").lower() == "true"
 HF_SPACE_URL = os.getenv("HF_SPACE_URL")  # e.g., https://YOUR_USERNAME-clip-api.hf.space
 

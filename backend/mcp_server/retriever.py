@@ -16,12 +16,22 @@ def get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     
     if _qdrant_client is None:
-        print("Connecting to Qdrant Cloud...")
+        print(f"Connecting to Qdrant Cloud at {QDRANT_URL}...")
+        import time
+        start = time.time()
+        
         _qdrant_client = QdrantClient(
             url=QDRANT_URL,
             api_key=QDRANT_API_KEY,
+            timeout=10,  # 10 second timeout
+            prefer_grpc=False,  # Use HTTP (more reliable than gRPC)
         )
-        print("Qdrant Cloud connected!")
+        
+        # Test connection
+        _qdrant_client.get_collections()
+        
+        elapsed = time.time() - start
+        print(f"Qdrant Cloud connected! ({elapsed:.2f}s)")
     
     return _qdrant_client
 
