@@ -23,6 +23,11 @@ EMBEDDING_DIM = 512
 # CLIP Configuration
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
+# Hugging Face Inference API for offloading embeddings
+USE_HF_INFERENCE = os.getenv("USE_HF_INFERENCE", "false").lower() == "true"
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")  # Get free token at https://huggingface.co/settings/tokens
+HF_INFERENCE_URL = f"https://api-inference.huggingface.co/models/{CLIP_MODEL_NAME}"
+
 # Gemini Configuration
 GEMINI_MODEL = "gemini-2.0-flash"
 
