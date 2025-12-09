@@ -1,14 +1,12 @@
-# Embedding functions - CLIP with optional HuggingFace Inference API offloading
+# Embedding functions - CLIP with optional HuggingFace Space offloading
 
 import torch
 from PIL import Image
 from typing import List
 import io
-import base64
 import requests
-import time
 
-from .config import CLIP_MODEL_NAME, USE_HF_INFERENCE, HF_API_TOKEN, HF_INFERENCE_URL, EMBEDDING_DIM
+from .config import CLIP_MODEL_NAME, USE_HF_SPACE, HF_SPACE_URL, EMBEDDING_DIM
 
 # Global model instances (lazy loaded)
 _clip_model = None
@@ -19,11 +17,11 @@ def get_clip_model():
     """Get or initialize CLIP model (lazy loading)"""
     global _clip_model, _clip_processor
     
-    # If using HF Inference API, don't load local model
-    if USE_HF_INFERENCE:
-        if not HF_API_TOKEN:
-            raise ValueError("HF_API_TOKEN required when USE_HF_INFERENCE=true")
-        print("Using Hugging Face Inference API for embeddings (no local model needed)")
+    # If using HF Space, don't load local model
+    if USE_HF_SPACE:
+        if not HF_SPACE_URL:
+            raise ValueError("HF_SPACE_URL required when USE_HF_SPACE=true")
+        print(f"Using HuggingFace Space for embeddings: {HF_SPACE_URL}")
         return None, None
     
     if _clip_model is None:
@@ -36,104 +34,45 @@ def get_clip_model():
     return _clip_model, _clip_processor
 
 
-def _hf_inference_embed_text(text: str, max_retries: int = 3) -> List[float]:
-    """Embed text using HuggingFace Inference API"""
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    payload = {"inputs": text}
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(HF_INFERENCE_URL, headers=headers, json=payload, timeout=30)
-            
-            if response.status_code == 503:
-                # Model is loading, wait and retry
-                wait_time = 2 ** attempt  # Exponential backoff
-                print(f"Model loading on HF... waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(wait_time)
-                continue
-            
-            response.raise_for_status()
-            
-            # HF returns embeddings directly for feature extraction models
-            embeddings = response.json()
-            
-            # CLIP returns text_embeds, normalize it
-            if isinstance(embeddings, list) and len(embeddings) > 0:
-                # Take first embedding if batched
-                embedding = embeddings[0] if isinstance(embeddings[0], list) else embeddings
-                
-                # Normalize
-                import numpy as np
-                embedding = np.array(embedding)
-                norm = np.linalg.norm(embedding)
-                if norm > 0:
-                    embedding = embedding / norm
-                
-                return embedding.tolist()[:EMBEDDING_DIM]  # Ensure correct dimension
-            
-            raise ValueError(f"Unexpected HF API response format: {embeddings}")
-            
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise Exception(f"HF Inference API failed after {max_retries} attempts: {str(e)}")
-            time.sleep(2 ** attempt)
-    
-    raise Exception("Failed to get embeddings from HF Inference API")
+def _hf_space_embed_text(text: str) -> List[float]:
+    """Embed text using HuggingFace Space API"""
+    try:
+        response = requests.post(
+            f"{HF_SPACE_URL}/embed/text",
+            json={"text": text},
+            timeout=30
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result["embedding"]
+    except Exception as e:
+        raise Exception(f"HF Space API failed: {str(e)}")
 
 
-def _hf_inference_embed_image(image: Image.Image, max_retries: int = 3) -> List[float]:
-    """Embed image using HuggingFace Inference API"""
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    
-    # Convert PIL image to bytes
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    img_bytes = buffered.getvalue()
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(
-                HF_INFERENCE_URL,
-                headers=headers,
-                data=img_bytes,
-                timeout=30
-            )
-            
-            if response.status_code == 503:
-                wait_time = 2 ** attempt
-                print(f"Model loading on HF... waiting {wait_time}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(wait_time)
-                continue
-            
-            response.raise_for_status()
-            embeddings = response.json()
-            
-            if isinstance(embeddings, list) and len(embeddings) > 0:
-                embedding = embeddings[0] if isinstance(embeddings[0], list) else embeddings
-                
-                # Normalize
-                import numpy as np
-                embedding = np.array(embedding)
-                norm = np.linalg.norm(embedding)
-                if norm > 0:
-                    embedding = embedding / norm
-                
-                return embedding.tolist()[:EMBEDDING_DIM]
-            
-            raise ValueError(f"Unexpected HF API response format: {embeddings}")
-            
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise Exception(f"HF Inference API failed after {max_retries} attempts: {str(e)}")
-            time.sleep(2 ** attempt)
-    
-    raise Exception("Failed to get image embeddings from HF Inference API")
+def _hf_space_embed_image(image: Image.Image) -> List[float]:
+    """Embed image using HuggingFace Space API"""
+    try:
+        # Convert PIL image to bytes
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        buffered.seek(0)
+        
+        response = requests.post(
+            f"{HF_SPACE_URL}/embed/image",
+            files={"file": ("image.png", buffered, "image/png")},
+            timeout=30
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result["embedding"]
+    except Exception as e:
+        raise Exception(f"HF Space API failed: {str(e)}")
 
 
 def embed_text(text: str) -> List[float]:
-    """Embed text using CLIP (local or HF Inference API)"""
-    if USE_HF_INFERENCE:
-        return _hf_inference_embed_text(text)
+    """Embed text using CLIP (local or HF Space)"""
+    if USE_HF_SPACE:
+        return _hf_space_embed_text(text)
     
     model, processor = get_clip_model()
     
@@ -152,7 +91,7 @@ def embed_text(text: str) -> List[float]:
 
 
 def embed_image(image_input) -> List[float]:
-    """Embed image using CLIP (local or HF Inference API). Accepts file path or PIL Image"""
+    """Embed image using CLIP (local or HF Space). Accepts file path or PIL Image"""
     if isinstance(image_input, str):
         image = Image.open(image_input).convert("RGB")
     elif isinstance(image_input, Image.Image):
@@ -160,8 +99,8 @@ def embed_image(image_input) -> List[float]:
     else:
         raise ValueError("image_input must be file path or PIL Image")
     
-    if USE_HF_INFERENCE:
-        return _hf_inference_embed_image(image)
+    if USE_HF_SPACE:
+        return _hf_space_embed_image(image)
     
     model, processor = get_clip_model()
     
