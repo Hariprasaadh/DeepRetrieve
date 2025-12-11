@@ -20,12 +20,12 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 COLLECTION_NAME = "multimodal_rag"
 EMBEDDING_DIM = 512
 
-# CLIP Configuration
+# CLIP Configuration (Local)
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
-# HuggingFace Space for CLIP embeddings 
-USE_HF_SPACE = os.getenv("USE_HF_SPACE", "false").lower() == "true"
-HF_SPACE_URL = os.getenv("HF_SPACE_URL")  # e.g., https://YOUR_USERNAME-clip-api.hf.space
+# Disabled for local deployment
+USE_HF_SPACE = False
+HF_SPACE_URL = None
 
 # Gemini Configuration
 GEMINI_MODEL = "gemini-2.0-flash"

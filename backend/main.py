@@ -5,23 +5,9 @@ import uvicorn
 import os
 
 
-def run_api(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
-    """Run the FastAPI server"""
-    # Auto-detect environment
-    is_render = os.getenv("RENDER") is not None
-    is_production = os.getenv("PYTHON_ENV") == "production" or is_render
-    
-    # For Render deployment
-    port = int(os.getenv("PORT", port))
-    
-    # Auto-configure host based on environment
-    if is_production:
-        host = "0.0.0.0"
-        reload = False
-        print(f"🌐 Production Mode - DeepRetrieve API at http://{host}:{port}")
-    else:
-        host = "localhost"
-        print(f"🔧 Development Mode - DeepRetrieve API at http://{host}:{port}")
+def run_api(host: str = "localhost", port: int = 8000, reload: bool = True):
+    """Run the FastAPI server locally"""
+    print(f"🔧 Local Mode - DeepRetrieve API at http://{host}:{port}")
     
     uvicorn.run(
         "api.app:app",
