@@ -45,6 +45,8 @@ def rag_retrieve(
     Returns:
         Dictionary with search results, relevance info, and formatted context
     """
+    print(f"🔍 [TOOL CALL] rag_retrieve | query: '{query}' | top_k: {top_k}")
+    
     # Search the vector database
     results = search_similar(
         query=query,
@@ -90,6 +92,8 @@ def fallback_web_search(
     Returns:
         Dictionary with web search results and formatted context
     """
+    print(f"🌐 [TOOL CALL] fallback_web_search | query: '{query}' | max_results: {max_results}")
+    
     # Perform web search
     search_results = web_search(
         query=query,
@@ -128,6 +132,8 @@ def hybrid_search(
     Returns:
         Combined results from RAG and optionally web search
     """
+    print(f"🔀 [TOOL CALL] hybrid_search | query: '{query}' | top_k: {top_k} | fallback: {web_fallback}")
+    
     # First, try RAG retrieval
     rag_results = rag_retrieve(query=query, top_k=top_k)
     
@@ -175,6 +181,8 @@ def generate_answer(
     Returns:
         Dictionary with the generated response
     """
+    print(f"💬 [TOOL CALL] generate_answer | query: '{query}' | context_len: {len(context)}")
+    
     system_prompt = """You are a helpful assistant that answers questions based on the provided context.
 Use the context to answer the question accurately and comprehensively."""
     
@@ -196,6 +204,7 @@ def get_knowledge_base_info() -> Dict[str, Any]:
     Returns:
         Dictionary with collection statistics
     """
+    print("📊 [TOOL CALL] get_knowledge_base_info")
     return get_collection_info()
 
 

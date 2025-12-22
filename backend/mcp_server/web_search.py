@@ -1,21 +1,11 @@
 # Web search fallback using Tavily API
 from typing import List, Dict, Any
 import json
-
-try:
-    from tavily import TavilyClient
-except ImportError:
-    TavilyClient = None
+from tavily import TavilyClient
 
 from .config import TAVILY_API_KEY
 
 # Initialize Tavily immediately
-if TavilyClient is None:
-    raise ImportError("tavily-python is not installed. Run: uv add tavily-python")
-
-if not TAVILY_API_KEY:
-    raise ValueError("TAVILY_API_KEY not set in environment")
-
 print("Initializing Tavily client...")
 _tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 print("✅ Tavily client ready!")
@@ -46,39 +36,29 @@ def web_search(
     """
     client = get_tavily_client()
     
-    try:
-        response = client.search(
-            query=query,
-            max_results=max_results,
-            search_depth=search_depth,
-            include_answer=include_answer
-        )
-        
-        results = []
-        for result in response.get("results", []):
-            results.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "content": result.get("content", ""),
-                "score": result.get("score", 0)
-            })
-        
-        return {
-            "success": True,
-            "query": query,
-            "answer": response.get("answer"),
-            "results": results,
-            "source": "web_search"
-        }
+    response = client.search(
+        query=query,
+        max_results=max_results,
+        search_depth=search_depth,
+        include_answer=include_answer
+    )
     
-    except Exception as e:
-        return {
-            "success": False,
-            "query": query,
-            "error": str(e),
-            "results": [],
-            "source": "web_search"
-        }
+    results = []
+    for result in response.get("results", []):
+        results.append({
+            "title": result.get("title", ""),
+            "url": result.get("url", ""),
+            "content": result.get("content", ""),
+            "score": result.get("score", 0)
+        })
+    
+    return {
+        "success": True,
+        "query": query,
+        "answer": response.get("answer"),
+        "results": results,
+        "source": "web_search"
+    }
 
 
 def format_web_results_as_context(search_results: Dict[str, Any]) -> str:

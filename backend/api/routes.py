@@ -66,75 +66,172 @@ async def ping():
     return {"status": "ok", "message": "DeepRetrieve API is running!"}
 
 
+@router.get("/tools")
+async def list_tools():
+    """List available MCP tools"""
+    try:
+        from mcp_server.server import mcp
+        
+        tools_list = []
+        for tool_name in mcp._tool_manager._tools.keys():
+            tool_func = mcp._tool_manager._tools[tool_name]
+            tools_list.append({
+                "name": tool_name,
+            })
+        
+        return {"tools": tools_list, "count": len(tools_list)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    """Ask a question - RAG first, LLM decides if web search needed"""
+    """Ask a question - Truly Agentic RAG where Gemini decides which tools to use"""
     try:
-        search_similar = get_retriever()
-        web_search, format_web_results = get_web_search()
-        generate_response, prepare_context, _, _ = get_llm()
+        from mcp_server.retriever import search_similar
+        from mcp_server.web_search import web_search, format_web_results_as_context
+        from mcp_server.llm import prepare_context_from_results, get_gemini_model, _apply_rate_limit
+        import google.generativeai as genai
         
-        # Step 1: Always get RAG results first
-        results = search_similar(query=request.query, top_k=request.top_k)
-        rag_context = prepare_context(results)
+        print(f"\n🤖 [AGENTIC RAG] Query: '{request.query}'")
+        
+        # Define tools for Gemini
+        tools = [
+            genai.protos.Tool(
+                function_declarations=[
+                    genai.protos.FunctionDeclaration(
+                        name="rag_retrieve",
+                        description="Search the multimodal RAG vector database for relevant documents, images, and tables. Use this first to find information from uploaded documents.",
+                        parameters=genai.protos.Schema(
+                            type=genai.protos.Type.OBJECT,
+                            properties={
+                                "query": genai.protos.Schema(type=genai.protos.Type.STRING, description="The search query"),
+                                "top_k": genai.protos.Schema(type=genai.protos.Type.INTEGER, description="Number of results (default: 5)")
+                            },
+                            required=["query"]
+                        )
+                    ),
+                    genai.protos.FunctionDeclaration(
+                        name="web_search",
+                        description="Search the web for information. Use this as fallback when RAG doesn't have sufficient information.",
+                        parameters=genai.protos.Schema(
+                            type=genai.protos.Type.OBJECT,
+                            properties={
+                                "query": genai.protos.Schema(type=genai.protos.Type.STRING, description="The search query"),
+                            },
+                            required=["query"]
+                        )
+                    )
+                ]
+            )
+        ]
+        
+        # Initialize agent 
+        model = get_gemini_model()
+        
+        # Define Python functions that can be called
+        def rag_retrieve_func(query: str, top_k: int = 5):
+            print(f"🔍 [TOOL] rag_retrieve | query: '{query}' | top_k: {top_k}")
+            return search_similar(query=query, top_k=int(top_k))
+        
+        def web_search_func(query: str):
+            print(f"🌐 [TOOL] web_search | query: '{query}'")
+            result = web_search(query=query, max_results=5, include_answer=True)
+            return {"success": result.get("success"), "results": result.get("results", []), "answer": result.get("answer")}
+        
+        # Map function names to actual functions
+        available_functions = {
+            "rag_retrieve": rag_retrieve_func,
+            "web_search": web_search_func
+        }
         
         sources = []
-        for r in results:
-            if r.get("content"):
-                sources.append(Source(
-                    type=r.get("type", "unknown"),
-                    content=r.get("content", "")[:500],
-                    source=r.get("source"),
-                    page=r.get("page"),
-                    score=r.get("score", 0)
-                ))
+        used_web = False
+        tool_calls = []
         
-        # Step 2: Ask LLM to answer with RAG context, or request web search
-        llm_prompt = f"""Answer the user's question using the provided context.
+        # Agent loop - let Gemini decide which tools to use
+        prompt = f"""You are a helpful research assistant with access to a knowledge base and web search.
 
-If the context contains relevant information: Answer the question directly.
-If the context is NOT sufficient or irrelevant: Reply EXACTLY with "NEED_WEB_SEARCH" (nothing else).
+Question: {request.query}
 
-CONTEXT:
-{rag_context if rag_context else "No documents found."}
+TOOL SELECTION GUIDELINES:
+1. First, try rag_retrieve to search the knowledge base
+2. If the knowledge base results are NOT relevant or insufficient for the question, use web_search
+3. Use web_search when asked about topics clearly outside your knowledge base (e.g., current events, general knowledge, frameworks, technologies not in your documents)
 
-QUESTION: {request.query}
+IMPORTANT: Do NOT include source citations, file names, or page numbers in your answer. The sources will be provided separately. Focus only on delivering a well-structured, informative response."""
 
-ANSWER:"""
-
-        from mcp_server.llm import get_gemini_model, _apply_rate_limit
-        model = get_gemini_model()
+        print("🤖 [AGENT] Gemini deciding which tools to use...")
         _apply_rate_limit()
         
-        first_response = model.generate_content(llm_prompt)
-        answer = first_response.text.strip()
-        used_web = False
+        chat = model.start_chat()
+        response = chat.send_message(prompt, tools=tools)
         
-        # Step 3: If LLM says it needs web search, do it
-        if "NEED_WEB_SEARCH" in answer:
-            web_results = web_search(query=request.query, max_results=5)
+        # Process function calls manually
+        while response.candidates[0].content.parts[0].function_call:
+            function_call = response.candidates[0].content.parts[0].function_call
+            func_name = function_call.name
+            func_args = dict(function_call.args)
             
-            if web_results.get("success"):
-                web_context = format_web_results(web_results)
-                used_web = True
+            print(f"🔧 [AGENT] Gemini called: {func_name}({func_args})")
+            tool_calls.append(func_name)
+            
+            # Execute the function
+            if func_name in available_functions:
+                func_result = available_functions[func_name](**func_args)
                 
-                # Add web sources
-                sources = []  # Replace with web sources
-                for r in web_results.get("results", [])[:5]:
-                    sources.append(Source(
-                        type="web",
-                        content=r.get("content", "")[:500],
-                        source=r.get("url"),
-                        page=None,
-                        score=r.get("score", 0)
-                    ))
+                # Collect sources
+                if func_name == "rag_retrieve" and isinstance(func_result, list):
+                    for r in func_result:
+                        if r.get("content"):
+                            sources.append(Source(
+                                type=r.get("type", "unknown"),
+                                content=r.get("content", "")[:500],
+                                source=r.get("source"),
+                                page=r.get("page"),
+                                score=r.get("score", 0)
+                            ))
                 
-                # Ask LLM again with web context
-                _apply_rate_limit()
-                web_response = model.generate_content(
-                    f"Answer this question using the web search results:\n\n{web_context}\n\nQuestion: {request.query}"
+                elif func_name == "web_search":
+                    used_web = True
+                    if func_result.get("success") and isinstance(func_result.get("results"), list):
+                        for r in func_result["results"][:5]:
+                            sources.append(Source(
+                                type="web",
+                                content=r.get("content", "")[:500],
+                                source=r.get("url"),
+                                page=None,
+                                score=r.get("score", 0)
+                            ))
+                
+                # Send function response back to Gemini
+                response = chat.send_message(
+                    genai.protos.Content(
+                        parts=[genai.protos.Part(
+                            function_response=genai.protos.FunctionResponse(
+                                name=func_name,
+                                response={"result": func_result}
+                            )
+                        )]
+                    )
                 )
-                answer = web_response.text.strip()
+            else:
+                print(f"⚠️ [AGENT] Unknown function: {func_name}")
+                response = chat.send_message(
+                    genai.protos.Content(
+                        parts=[genai.protos.Part(
+                            function_response=genai.protos.FunctionResponse(
+                                name=func_name,
+                                response={"error": "Function not found"}
+                            )
+                        )]
+                    )
+                )
+        
+        # Get final answer from agent
+        answer = response.text if response.text else "I couldn't generate an answer."
+        
+        print(f"✅ [AGENT] Completed. Tools used: {tool_calls}")
         
         return QueryResponse(
             success=True,

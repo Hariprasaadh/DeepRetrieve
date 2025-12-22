@@ -3,11 +3,7 @@
 from typing import List, Dict, Optional, Any
 import time
 from threading import Lock
-
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
+import google.generativeai as genai
 
 from .config import (
     GOOGLE_API_KEY, 
@@ -19,12 +15,6 @@ from .config import (
 )
 
 # Initialize Gemini immediately
-if genai is None:
-    raise ImportError("google-generativeai is not installed. Run: uv add google-generativeai")
-
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY not set in environment")
-
 print(f"Initializing Gemini ({GEMINI_MODEL})...")
 genai.configure(api_key=GOOGLE_API_KEY)
 _gemini_model = genai.GenerativeModel(GEMINI_MODEL)
@@ -145,30 +135,12 @@ ANSWER:"""
     # Apply rate limiting before making the call
     _apply_rate_limit()
     
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt)
-            return {
-                "success": True,
-                "response": response.text,
-                "query": query
-            }
-        except Exception as e:
-            error_str = str(e).lower()
-            
-            # Check if it's a rate limit error
-            if "rate" in error_str or "quota" in error_str or "429" in error_str:
-                if attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 10  # Exponential backoff: 10s, 20s, 30s
-                    print(f"Rate limit hit. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(wait_time)
-                    continue
-            
-            return {
-                "success": False,
-                "error": str(e),
-                "query": query
-            }
+    response = model.generate_content(prompt)
+    return {
+        "success": True,
+        "response": response.text,
+        "query": query
+    }
     
     return {
         "success": False,

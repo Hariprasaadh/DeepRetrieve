@@ -24,8 +24,8 @@ EMBEDDING_DIM = 512
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
 
-# Gemini Configuration
-GEMINI_MODEL = "gemini-2.0-flash"
+# Gemini Configuration  
+GEMINI_MODEL = "gemini-2.5-flash"
 
 # RAG Configuration
 TOP_K = 5
