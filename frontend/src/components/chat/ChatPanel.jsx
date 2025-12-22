@@ -20,9 +20,9 @@ function ChatPanel({ onSourcesUpdate }) {
 
     // Suggested questions for the Hero section
     const suggestions = [
-        "Summarize the key financial highlights",
-        "What are the risks mentioned in section 4?",
-        "Compare Q4 revenue with Q3",
+        "Summarize the document",
+        "What are the key points mentioned?",
+        "Explain the main findings",
     ];
 
     const handleSend = async (e) => {
