@@ -7,32 +7,27 @@ from qdrant_client.http.models import Distance, VectorParams, PointStruct, Binar
 from .config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_DIM
 from .embeddings import embed_text, embed_image
 
-# Global client instance (lazy loaded)
-_qdrant_client = None
+# Connect to Qdrant immediately
+print(f"Connecting to Qdrant Cloud at {QDRANT_URL}...")
+import time
+start = time.time()
+
+_qdrant_client = QdrantClient(
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY,
+    timeout=10,
+    prefer_grpc=False,
+)
+
+# Test connection
+_qdrant_client.get_collections()
+
+elapsed = time.time() - start
+print(f"✅ Qdrant Cloud connected! ({elapsed:.2f}s)")
 
 
 def get_qdrant_client() -> QdrantClient:
-    """Get or initialize Qdrant client (lazy loading)"""
-    global _qdrant_client
-    
-    if _qdrant_client is None:
-        print(f"Connecting to Qdrant Cloud at {QDRANT_URL}...")
-        import time
-        start = time.time()
-        
-        _qdrant_client = QdrantClient(
-            url=QDRANT_URL,
-            api_key=QDRANT_API_KEY,
-            timeout=10,  # 10 second timeout
-            prefer_grpc=False,  # Use HTTP (more reliable than gRPC)
-        )
-        
-        # Test connection
-        _qdrant_client.get_collections()
-        
-        elapsed = time.time() - start
-        print(f"Qdrant Cloud connected! ({elapsed:.2f}s)")
-    
+    """Get Qdrant client instance"""
     return _qdrant_client
 
 

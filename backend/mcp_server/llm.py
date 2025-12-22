@@ -18,9 +18,17 @@ from .config import (
     MAX_RETRIES
 )
 
+# Initialize Gemini immediately
+if genai is None:
+    raise ImportError("google-generativeai is not installed. Run: uv add google-generativeai")
 
-# Global model instance (lazy loaded)
-_gemini_model = None
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY not set in environment")
+
+print(f"Initializing Gemini ({GEMINI_MODEL})...")
+genai.configure(api_key=GOOGLE_API_KEY)
+_gemini_model = genai.GenerativeModel(GEMINI_MODEL)
+print("✅ Gemini model ready!")
 
 # Rate limiting state
 _rate_limit_lock = Lock()
@@ -29,21 +37,7 @@ _call_count = 0
 
 
 def get_gemini_model():
-    """Get or initialize Gemini model (lazy loading)"""
-    global _gemini_model
-    
-    if _gemini_model is None:
-        if genai is None:
-            raise ImportError("google-generativeai is not installed. Run: uv add google-generativeai")
-        
-        if not GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY not set in environment")
-        
-        print(f"Initializing Gemini ({GEMINI_MODEL})...")
-        genai.configure(api_key=GOOGLE_API_KEY)
-        _gemini_model = genai.GenerativeModel(GEMINI_MODEL)
-        print("Gemini model ready!")
-    
+    """Get Gemini model instance"""
     return _gemini_model
 
 

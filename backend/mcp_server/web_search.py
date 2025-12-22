@@ -1,5 +1,4 @@
 # Web search fallback using Tavily API
-
 from typing import List, Dict, Any
 import json
 
@@ -10,26 +9,20 @@ except ImportError:
 
 from .config import TAVILY_API_KEY
 
+# Initialize Tavily immediately
+if TavilyClient is None:
+    raise ImportError("tavily-python is not installed. Run: uv add tavily-python")
 
-# Global client instance (lazy loaded)
-_tavily_client = None
+if not TAVILY_API_KEY:
+    raise ValueError("TAVILY_API_KEY not set in environment")
+
+print("Initializing Tavily client...")
+_tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+print("✅ Tavily client ready!")
 
 
 def get_tavily_client():
-    """Get or initialize Tavily client (lazy loading)"""
-    global _tavily_client
-    
-    if _tavily_client is None:
-        if TavilyClient is None:
-            raise ImportError("tavily-python is not installed. Run: uv add tavily-python")
-        
-        if not TAVILY_API_KEY:
-            raise ValueError("TAVILY_API_KEY not set in environment")
-        
-        print("Initializing Tavily client...")
-        _tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
-        print("Tavily client ready!")
-    
+    """Get Tavily client instance"""
     return _tavily_client
 
 

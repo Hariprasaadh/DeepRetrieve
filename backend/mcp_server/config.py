@@ -23,9 +23,6 @@ EMBEDDING_DIM = 512
 # CLIP Configuration (Local)
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 
-# Disabled for local deployment
-USE_HF_SPACE = False
-HF_SPACE_URL = None
 
 # Gemini Configuration
 GEMINI_MODEL = "gemini-2.0-flash"
