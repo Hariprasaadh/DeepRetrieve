@@ -1,10 +1,51 @@
-import { useState, useCallback } from 'react'
-import { UploadCloud, FileText, X, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { UploadCloud, FileText, X, Loader2, Sparkles, CheckCircle2, WifiOff, Wifi } from 'lucide-react'
 
-function UploadDemo() {
+const API_BASE_URL = 'http://localhost:8000'
+
+function Upload() {
+  const navigate = useNavigate()
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [backendStatus, setBackendStatus] = useState('checking') // 'checking', 'online', 'offline'
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  
+  // Check backend status on mount and periodically
+  useEffect(() => {
+    checkBackendStatus()
+    const interval = setInterval(checkBackendStatus, 10000) // Check every 10 seconds
+    return () => clearInterval(interval)
+  }, [])
+  
+  const checkBackendStatus = async () => {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      
+      const response = await fetch(`${API_BASE_URL}/api/v1/ping`, {
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        setBackendStatus('online')
+      } else {
+        setBackendStatus('offline')
+      }
+    } catch (error) {
+      setBackendStatus('offline')
+    }
+  }
+  
+  const handleRetryConnection = async () => {
+    setIsCheckingStatus(true)
+    await checkBackendStatus()
+    setIsCheckingStatus(false)
+  }
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault()
@@ -37,11 +78,34 @@ function UploadDemo() {
     if (!file) return
     
     setIsUploading(true)
-    // Simulate upload
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsUploading(false)
-    alert('File uploaded successfully! (Demo)')
-    setFile(null)
+    setUploadError(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch(`${API_BASE_URL}/api/v1/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Upload failed')
+      }
+      
+      const result = await response.json()
+      
+      // Store filename in localStorage for chat page
+      localStorage.setItem('uploadedPdfName', file.name)
+      
+      // Redirect to chat page
+      navigate('/chat')
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadError(error.message)
+      setIsUploading(false)
+    }
   }
 
   const removeFile = () => {
@@ -68,7 +132,42 @@ function UploadDemo() {
             <span className="text-xs sm:text-sm font-medium text-indigo-300">Try It Now</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white tracking-tight mb-4 sm:mb-5">Start by dropping a file</h2>
-          <p className="text-base sm:text-lg text-slate-500">No setup required. Just drag and drop.</p>
+          <p className="text-base sm:text-lg text-slate-500 mb-6">No setup required. Just drag and drop.</p>
+          
+          {/* Backend Status Indicator */}
+          <div className="flex justify-center">
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all ${
+              backendStatus === 'online' 
+                ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                : backendStatus === 'offline'
+                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                : 'bg-slate-500/10 border-slate-500/30 text-slate-400'
+            }`}>
+              {backendStatus === 'online' ? (
+                <>
+                  <Wifi className="w-4 h-4" />
+                  <span>Backend Online</span>
+                </>
+              ) : backendStatus === 'offline' ? (
+                <>
+                  <WifiOff className="w-4 h-4" />
+                  <span>Backend Offline</span>
+                  <button
+                    onClick={handleRetryConnection}
+                    disabled={isCheckingStatus}
+                    className="ml-2 px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                  >
+                    {isCheckingStatus ? 'Checking...' : 'Retry'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Checking backend...</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {!file ? (
@@ -135,10 +234,23 @@ function UploadDemo() {
               </button>
             </div>
             
+            {uploadError && (
+              <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {uploadError}
+              </div>
+            )}
+            
+            {backendStatus === 'offline' && (
+              <div className="mb-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm flex items-center gap-2">
+                <WifiOff className="w-4 h-4" />
+                <span>Backend is offline. Please start the backend server first.</span>
+              </div>
+            )}
+            
             <button 
               onClick={handleUpload}
-              disabled={isUploading}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)]"
+              disabled={isUploading || backendStatus !== 'online'}
+              className="w-full h-14 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)]"
             >
               {isUploading ? (
                 <>
@@ -159,4 +271,4 @@ function UploadDemo() {
   )
 }
 
-export default UploadDemo
+export default Upload

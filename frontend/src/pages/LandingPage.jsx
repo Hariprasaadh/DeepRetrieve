@@ -1,4 +1,4 @@
-import { Navbar, Hero, AppMockup, Features, HowItWorks, Comparison, UploadDemo, Footer, ParticleBackground } from '../components/landing'
+import { Navbar, Hero, AppMockup, Features, HowItWorks, Comparison, VideoDemo, Upload, Footer, ParticleBackground } from '../components/landing'
 
 function LandingPage() {
   return (
@@ -18,7 +18,8 @@ function LandingPage() {
       <HowItWorks />
       <Comparison />
       <Features />
-      <UploadDemo />
+      <VideoDemo />
+      <Upload />
       <Footer />
     </div>
   )

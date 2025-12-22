@@ -1,4 +1,4 @@
-import { Layers, Twitter, Github } from 'lucide-react'
+import { Layers, Linkedin, Github } from 'lucide-react'
 
 function Footer() {
   return (
@@ -43,8 +43,12 @@ function Footer() {
         <div className="border-t border-white/5 pt-6 sm:pt-10 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
           <p className="text-xs text-slate-600 text-center md:text-left">© 2025 DeepRetrieve Inc.</p>
           <div className="flex gap-6">
-            <Twitter className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
-            <Github className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
+            <a href="https://www.linkedin.com/in/hariprasaadh-k-a5430a287/" target="_blank" rel="noopener noreferrer">
+              <Linkedin className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
+            </a>
+            <a href="https://github.com/Hariprasaadh/DeepRetrieve" target="_blank" rel="noopener noreferrer">
+              <Github className="w-5 h-5 text-slate-600 hover:text-white cursor-pointer transition-colors" strokeWidth={1.5} />
+            </a>
           </div>
         </div>
       </div>

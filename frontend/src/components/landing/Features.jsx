@@ -72,7 +72,7 @@ function Features() {
       },
       {
         icon: Workflow,
-        title: 'Gemini 2.0 Integration',
+        title: 'Gemini 2.5 Integration',
         description: 'Powered by Google\'s latest multimodal LLM for superior reasoning.',
         color: 'purple',
         gradient: 'from-purple-500/20 to-pink-500/20'

@@ -5,44 +5,37 @@ from PIL import Image
 from typing import List
 import io
 import base64
+from transformers import CLIPProcessor, CLIPModel
 
 from .config import CLIP_MODEL_NAME, EMBEDDING_DIM
 
-# Cache model instances (loaded on first use)
-_clip_model = None
-_clip_processor = None
+# Detect GPU and load model at startup
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"🚀 Loading CLIP model on {device.upper()}...")
 
+_clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME).to(device)
+_clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME, use_fast=True)
 
-def _ensure_model_loaded():
-    """Load CLIP model once and cache it"""
-    global _clip_model, _clip_processor
-    if _clip_model is None:
-        from transformers import CLIPProcessor, CLIPModel
-        print(f"Loading CLIP model: {CLIP_MODEL_NAME}...")
-        _clip_model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
-        _clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
-        print("✅ CLIP model loaded and ready!")
+print(f"✅ CLIP model loaded on {device.upper()} and ready!")
 
 
 def embed_text(text: str) -> List[float]:
     """Embed text using local CLIP model"""
-    _ensure_model_loaded()
     inputs = _clip_processor(
         text=text,
         return_tensors="pt",
         padding=True,
         truncation=True,
         max_length=77
-    )
+    ).to(device)
     
     with torch.no_grad():
         features = _clip_model.get_text_features(**inputs)
         features = features / features.norm(dim=-1, keepdim=True)
-        return features.squeeze().tolist()
+        return features.cpu().squeeze().tolist()
 
 
 def embed_image(image_input) -> List[float]:
-    _ensure_model_loaded()
     """Embed image using local CLIP model. Accepts file path or PIL Image"""
     if isinstance(image_input, str):
         image = Image.open(image_input).convert("RGB")
@@ -51,12 +44,12 @@ def embed_image(image_input) -> List[float]:
     else:
         raise ValueError("image_input must be file path or PIL Image")
     
-    inputs = _clip_processor(images=image, return_tensors="pt")
+    inputs = _clip_processor(images=image, return_tensors="pt").to(device)
     
     with torch.no_grad():
         features = _clip_model.get_image_features(**inputs)
         features = features / features.norm(dim=-1, keepdim=True)
-        return features.squeeze().tolist()
+        return features.cpu().squeeze().tolist()
 
 
 def embed_image_base64(base64_string: str) -> List[float]:
