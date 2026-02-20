@@ -21,9 +21,11 @@ function Upload() {
   }, [])
   
   const checkBackendStatus = async () => {
+    // Don't run health check while upload is in progress — backend may be busy
+    if (isUploading) return
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
       
       const response = await fetch(`${API_BASE_URL}/api/v1/ping`, {
         signal: controller.signal
@@ -37,7 +39,8 @@ function Upload() {
         setBackendStatus('offline')
       }
     } catch (error) {
-      setBackendStatus('offline')
+      // Only mark offline if we're not in the middle of an upload
+      if (!isUploading) setBackendStatus('offline')
     }
   }
   
@@ -240,7 +243,7 @@ function Upload() {
               </div>
             )}
             
-            {backendStatus === 'offline' && (
+    {backendStatus === 'offline' && !isUploading && (
               <div className="mb-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm flex items-center gap-2">
                 <WifiOff className="w-4 h-4" />
                 <span>Backend is offline. Please start the backend server first.</span>

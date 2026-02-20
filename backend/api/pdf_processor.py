@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
 import fitz  # PyMuPDF
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from qdrant_client.http.models import PointStruct
 
 try:
     import camelot
@@ -14,11 +17,36 @@ try:
 except ImportError:
     CAMELOT_AVAILABLE = False
 
-from mcp_server.config import OUTPUT_FOLDER, IMAGES_FOLDER, TABLES_FOLDER
+from mcp_server.config import OUTPUT_FOLDER, IMAGES_FOLDER, TABLES_FOLDER, GOOGLE_API_KEY, GEMINI_MODEL
 from mcp_server.embeddings import embed_text, embed_image_base64
 from mcp_server.retriever import get_qdrant_client, COLLECTION_NAME
 
-from qdrant_client.http.models import PointStruct
+# Initialize Gemini for image captioning
+genai.configure(api_key=GOOGLE_API_KEY)
+_caption_model = genai.GenerativeModel(GEMINI_MODEL)
+
+
+def generate_image_caption(image_base64: str, source: str, page: int) -> str:
+    """Use Gemini vision to generate a descriptive caption for an image"""
+    try:
+        image_bytes = base64.b64decode(image_base64)
+        image_part = {"mime_type": "image/png", "data": image_bytes}
+        prompt = (
+            "Describe this image concisely in 1-2 sentences. Focus on the key information it conveys "
+            "(e.g., chart trends, diagram structure, table data, figure content). "
+            "Do not say 'this image shows' — just describe the content directly."
+        )
+        response = _caption_model.generate_content(
+            [prompt, image_part],
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            }
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"Caption generation failed for page {page}: {e}")
+        return f"Image from page {page} of {source}"
 
 
 def ensure_output_folders():
@@ -97,12 +125,13 @@ def extract_images_from_pdf(pdf_path: str, min_size: int = 100) -> List[Dict]:
                 # Convert to base64
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
                 
+                caption = generate_image_caption(image_base64, source_name, page_num + 1)
                 images.append({
                     "image_base64": image_base64,
                     "path": str(image_path),
                     "page": page_num + 1,
                     "source": source_name,
-                    "content": f"Image from {source_name}, page {page_num + 1}"
+                    "content": caption
                 })
             except Exception as e:
                 print(f"Error extracting image: {e}")
@@ -243,12 +272,17 @@ def add_tables_to_qdrant(tables: List[Dict]) -> int:
     return len(points)
 
 
-def process_pdf(pdf_path: str) -> Tuple[int, int, int]:
+def process_pdf(pdf_path: str, original_filename: Optional[str] = None) -> Tuple[int, int, int]:
     """Process a PDF file and add all content to Qdrant"""
     # Extract content
     texts = extract_text_from_pdf(pdf_path)
     images = extract_images_from_pdf(pdf_path)
     tables = extract_tables_from_pdf(pdf_path)
+    
+    # Replace temp filename with the original upload filename
+    if original_filename:
+        for item in texts + images + tables:
+            item["source"] = original_filename
     
     # Add to Qdrant
     texts_added = add_texts_to_qdrant(texts)

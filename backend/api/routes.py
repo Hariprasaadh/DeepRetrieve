@@ -11,9 +11,15 @@ from pydantic import BaseModel, Field
 
 # Request/Response Models
 
+class ConversationTurn(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
 class QueryRequest(BaseModel):
     query: str = Field(..., description="Your question")
     top_k: int = Field(default=5, ge=1, le=20, description="Number of sources to retrieve")
+    conversation_history: List[ConversationTurn] = Field(default=[], description="Prior turns for memory")
 
 
 class Source(BaseModel):
@@ -149,15 +155,25 @@ async def query(request: QueryRequest):
         used_web = False
         tool_calls = []
         
-        # Agent loop - let Gemini decide which tools to use
-        prompt = f"""You are a helpful research assistant with access to a knowledge base and web search.
+        # Build conversation memory context
+        history_text = ""
+        if request.conversation_history:
+            history_lines = []
+            for turn in request.conversation_history[-3:]:  # last 3 turns 
+                role_label = "User" if turn.role == "user" else "Assistant"
+                history_lines.append(f"{role_label}: {turn.content}")
+            history_text = "\n".join(history_lines)
 
+        # Agent loop - let Gemini decide which tools to use
+        history_section = f"\n\nCONVERSATION HISTORY (for context):\n{history_text}\n" if history_text else ""
+        prompt = f"""You are a helpful research assistant with access to a knowledge base and web search.{history_section}
 Question: {request.query}
 
 TOOL SELECTION GUIDELINES:
 1. First, try rag_retrieve to search the knowledge base
 2. If the knowledge base results are NOT relevant or insufficient for the question, use web_search
 3. Use web_search when asked about topics clearly outside your knowledge base (e.g., current events, general knowledge, frameworks, technologies not in your documents)
+4. Use the conversation history to understand follow-up questions and resolve pronouns/references
 
 IMPORTANT: Do NOT include source citations, file names, or page numbers in your answer. The sources will be provided separately. Focus only on delivering a well-structured, informative response."""
 
@@ -267,7 +283,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         
         try:
             logger.info("🔄 Processing PDF (this may take 2-5 minutes on free tier)...")
-            texts_added, images_added, tables_added = process_pdf(tmp_path)
+            texts_added, images_added, tables_added = process_pdf(tmp_path, original_filename=file.filename)
             logger.info(f"✅ Done! Added {texts_added} texts, {images_added} images, {tables_added} tables")
             
             return UploadResponse(
@@ -287,16 +303,36 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @router.delete("/reset")
 async def reset_collection():
-    """Reset the vector database (delete all documents)"""
+    """Reset Qdrant collection and clear all extracted images/tables"""
     try:
         from mcp_server.retriever import get_qdrant_client, create_collection, COLLECTION_NAME
+        from mcp_server.config import IMAGES_FOLDER, TABLES_FOLDER
+
+        # 1. Reset Qdrant collection
         client = get_qdrant_client()
-        
         if client.collection_exists(COLLECTION_NAME):
             client.delete_collection(COLLECTION_NAME)
-        
         create_collection(COLLECTION_NAME)
-        
-        return {"success": True, "message": "Collection reset successfully"}
+
+        # 2. Clear extracted images
+        images_deleted = 0
+        if IMAGES_FOLDER.exists():
+            for f in IMAGES_FOLDER.iterdir():
+                if f.is_file():
+                    f.unlink()
+                    images_deleted += 1
+
+        # 3. Clear extracted tables
+        tables_deleted = 0
+        if TABLES_FOLDER.exists():
+            for f in TABLES_FOLDER.iterdir():
+                if f.is_file():
+                    f.unlink()
+                    tables_deleted += 1
+
+        return {
+            "success": True,
+            "message": f"Reset complete — Qdrant collection recreated, {images_deleted} images and {tables_deleted} tables deleted.",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,83 +1,123 @@
-import { useState, useEffect } from 'react';
-import { Send, Bot, User, Paperclip, Sparkles, Plus, ArrowUp } from 'lucide-react';
+﻿import { useState, useEffect, useRef } from 'react';
+import { Send, Bot, User, Paperclip, Sparkles, Plus, ArrowUp, RotateCcw, Globe, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE_URL = 'http://localhost:8000';
+
+const LOADING_PHRASES = [
+    'Searching knowledge base…',
+    'Analyzing sources…',
+    'Generating response…',
+];
 
 function ChatPanel({ onSourcesUpdate }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
     const [uploadedPdf, setUploadedPdf] = useState(null);
-    
+    // Flat conversation history sent to backend for memory
+    const [conversationHistory, setConversationHistory] = useState([]);
+    const bottomRef = useRef(null);
+    const loadingTimerRef = useRef(null);
+
     useEffect(() => {
-        // Get uploaded PDF name from localStorage
         const pdfName = localStorage.getItem('uploadedPdfName');
-        if (pdfName) {
-            setUploadedPdf(pdfName);
-        }
+        if (pdfName) setUploadedPdf(pdfName);
     }, []);
 
-    // Suggested questions for the Hero section
+    // Auto-scroll to latest message
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isTyping]);
+
+    // Cycle loading phrases while waiting
+    useEffect(() => {
+        if (isTyping) {
+            let i = 0;
+            loadingTimerRef.current = setInterval(() => {
+                i = (i + 1) % LOADING_PHRASES.length;
+                setLoadingPhrase(LOADING_PHRASES[i]);
+            }, 1800);
+        } else {
+            clearInterval(loadingTimerRef.current);
+            setLoadingPhrase(LOADING_PHRASES[0]);
+        }
+        return () => clearInterval(loadingTimerRef.current);
+    }, [isTyping]);
+
     const suggestions = [
         "Summarize the document",
-        "What are the key points mentioned?",
-        "Explain the main findings",
+        "What are the key findings?",
+        "Explain the main concepts",
     ];
 
     const handleSend = async (e) => {
-        e.preventDefault();
-        if (!input.trim()) return;
+        e?.preventDefault();
+        if (!input.trim() || isTyping) return;
 
         const userMessage = input.trim();
-        const newMsg = { id: Date.now(), role: 'user', content: userMessage, timestamp: 'Now' };
-        setMessages((prev) => [...prev, newMsg]);
+        const newMsg = { id: Date.now(), role: 'user', content: userMessage };
+        setMessages(prev => [...prev, newMsg]);
         setInput('');
         setIsTyping(true);
+
+        // Snapshot history before adding new user turn (backend needs prior turns only)
+        const historySnapshot = conversationHistory;
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/v1/query`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: userMessage,
-                    top_k: 5
+                    top_k: 5,
+                    conversation_history: historySnapshot,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error('Query failed');
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${response.status}`);
             }
 
             const data = await response.json();
-            
-            setIsTyping(false);
+
             const aiMsg = {
                 id: Date.now() + 1,
                 role: 'ai',
                 content: data.answer,
-                timestamp: 'Just now',
                 sources: data.sources || [],
-                usedWeb: data.used_web_search || false
+                usedWeb: data.used_web_search || false,
             };
-            setMessages((prev) => [...prev, aiMsg]);
-            
-            // Update sources panel
+            setMessages(prev => [...prev, aiMsg]);
+
+            // Append both turns to memory
+            setConversationHistory(prev => [
+                ...prev,
+                { role: 'user',      content: userMessage },
+                { role: 'assistant', content: data.answer },
+            ]);
+
             if (onSourcesUpdate && data.sources) {
                 onSourcesUpdate(data.sources, data.used_web_search);
             }
         } catch (error) {
-            setIsTyping(false);
-            const errorMsg = {
+            setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 role: 'ai',
-                content: `Sorry, I encountered an error: ${error.message}. Please make sure the backend is running.`,
-                timestamp: 'Just now'
-            };
-            setMessages((prev) => [...prev, errorMsg]);
+                content: null,
+                error: error.message,
+            }]);
+        } finally {
+            setIsTyping(false);
         }
+    };
+
+    const handleNewConversation = () => {
+        setMessages([]);
+        setConversationHistory([]);
+        onSourcesUpdate?.([], false);
     };
 
     return (
@@ -90,21 +130,15 @@ function ChatPanel({ onSourcesUpdate }) {
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center -mt-10 sm:-mt-20 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] px-4">
                         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3 tracking-tight text-center">
-                            Good evening, Alex
+                            What do you want to know?
                         </h1>
                         <p className="text-slate-400 text-base sm:text-lg mb-6 sm:mb-10 max-w-md text-center leading-relaxed">
                             {uploadedPdf ? (
-                                <>
-                                    Ready to analyze <span className="text-slate-200 font-medium">{uploadedPdf}</span>?
-                                    Ask me anything about the document.
-                                </>
+                                <>Ready to analyze <span className="text-slate-200 font-medium">{uploadedPdf.replace(/\.pdf$/i, '')}</span>. Ask me anything.</>
                             ) : (
-                                <>
-                                    Upload a document to get started.
-                                </>
+                                <>Upload a document on the home page to get started.</>
                             )}
                         </p>
-
                         <div className="grid gap-2 sm:gap-3 w-full max-w-md">
                             {suggestions.map((q, i) => (
                                 <button
@@ -113,10 +147,22 @@ function ChatPanel({ onSourcesUpdate }) {
                                     className="bg-[#1a1a23]/50 hover:bg-[#1a1a23] border border-white/5 hover:border-indigo-500/30 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-left text-xs sm:text-sm text-slate-300 hover:text-white transition-all flex items-center justify-between group"
                                 >
                                     <span className="truncate">{q}</span>
-                                    <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 -rotate-45 transition-all text-slate-500 flex-shrink-0 ml-2" />
+                                    <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 -rotate-45 transition-all text-slate-500 shrink-0 ml-2" />
                                 </button>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* New Conversation button — only visible once chat has started */}
+                {messages.length > 0 && (
+                    <div className="flex justify-center pt-1">
+                        <button
+                            onClick={handleNewConversation}
+                            className="flex items-center gap-1.5 text-[10px] text-slate-600 hover:text-slate-300 transition-colors px-3 py-1 rounded-full border border-white/5 hover:border-white/10"
+                        >
+                            <RotateCcw className="w-3 h-3" /> New conversation
+                        </button>
                     </div>
                 )}
 
@@ -131,7 +177,7 @@ function ChatPanel({ onSourcesUpdate }) {
                         >
                             {/* AI Avatar */}
                             {msg.role === 'ai' && (
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex-shrink-0 flex items-center justify-center mt-1">
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 flex items-center justify-center mt-1">
                                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </div>
                             )}
@@ -146,16 +192,27 @@ function ChatPanel({ onSourcesUpdate }) {
                                 >
                                     {msg.role === 'user' ? (
                                         msg.content
+                                    ) : msg.error ? (
+                                        <div className="flex items-start gap-2 text-red-400/80 text-sm">
+                                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>Error: {msg.error}. Make sure the backend is running.</span>
+                                        </div>
                                     ) : (
-                                        // Simple Markdown simulation
-                                        <div className="prose prose-invert prose-p:leading-7 prose-strong:text-indigo-200">
-                                            <div dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                        <div className="space-y-1">
+                                            {msg.usedWeb && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] text-blue-400/80 bg-blue-500/10 px-2 py-0.5 rounded-full mb-1">
+                                                    <Globe className="w-2.5 h-2.5" /> Web search used
+                                                </span>
+                                            )}
+                                            <div className="prose prose-invert prose-p:leading-7 prose-strong:text-indigo-200">
+                                                <div dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* User Avatar (Hidden for cleaner look, or minimal dot) */}
+                            {/* User Avatar */}
                             {msg.role === 'user' && (
                                 <div className="w-8 h-8 rounded-full bg-slate-700/50 flex flex-col items-center justify-center mt-1 text-xs font-medium text-slate-300">
                                     Me
@@ -164,25 +221,30 @@ function ChatPanel({ onSourcesUpdate }) {
                         </motion.div>
                     ))}
 
+                    {/* Loading indicator with cycling phrase */}
                     {isTyping && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-5 max-w-3xl mx-auto">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex-shrink-0 flex items-center justify-center">
-                                <Sparkles className="w-4 h-4" />
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 flex items-center justify-center">
+                                <Sparkles className="w-4 h-4 animate-pulse" />
                             </div>
-                            <div className="flex gap-1 items-center h-8">
-                                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span>
-                                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-75"></span>
-                                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-150"></span>
+                            <div className="flex items-center gap-2 h-8">
+                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
+                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:75ms]"></span>
+                                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
+                                <span className="text-xs text-slate-500 ml-1 transition-all duration-500">{loadingPhrase}</span>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Scroll anchor */}
+                <div ref={bottomRef} />
             </div>
 
             {/* Floating Input Area */}
             <div className="p-3 sm:p-6 pt-0 bg-transparent relative z-20 flex justify-center">
                 <div className="w-full max-w-3xl relative">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 rounded-xl sm:rounded-2xl opacity-0 focus-within:opacity-100 transition-opacity duration-500 blur-lg"></div>
+                    <div className="absolute -inset-1 bg-linear-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 rounded-xl sm:rounded-2xl opacity-0 focus-within:opacity-100 transition-opacity duration-500 blur-lg"></div>
 
                     <form onSubmit={handleSend} className="relative bg-[#0e0e16]/80 backdrop-blur-2xl border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl flex items-end p-1.5 sm:p-2 transition-all ring-1 ring-white/0 focus-within:ring-white/5">
 
@@ -199,16 +261,17 @@ function ChatPanel({ onSourcesUpdate }) {
                                     handleSend(e);
                                 }
                             }}
-                            placeholder="Ask anything about the document..."
+                            placeholder="Ask anything about the document…"
                             rows={1}
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-slate-200 placeholder:text-slate-500 px-2 sm:px-3 py-3 sm:py-3.5 text-sm sm:text-base resize-none max-h-32 min-h-[44px] sm:min-h-[52px]"
+                            disabled={isTyping}
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-slate-200 placeholder:text-slate-500 px-2 sm:px-3 py-3 sm:py-3.5 text-sm sm:text-base resize-none max-h-32 min-h-11 sm:min-h-[52px] disabled:opacity-50"
                             style={{ fieldSizing: 'content' }}
                         />
 
                         <button
                             type="submit"
-                            disabled={!input.trim()}
-                            className={`p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-300 self-end mb-0.5 ${input.trim() ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] hover:bg-indigo-500' : 'bg-white/5 text-slate-500'}`}
+                            disabled={!input.trim() || isTyping}
+                            className={`p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-300 self-end mb-0.5 ${input.trim() && !isTyping ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] hover:bg-indigo-500' : 'bg-white/5 text-slate-500'}`}
                         >
                             <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
