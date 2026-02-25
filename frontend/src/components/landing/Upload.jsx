@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UploadCloud, FileText, X, Loader2, Sparkles, CheckCircle2, WifiOff, Wifi } from 'lucide-react'
 
@@ -10,8 +10,15 @@ function Upload() {
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
-  const [backendStatus, setBackendStatus] = useState('checking') // 'checking', 'online', 'offline'
+  const [backendStatus, setBackendStatus] = useState('checking')
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  // Ref so interval callbacks always see the live uploading state (avoids stale closure)
+  const isUploadingRef = useRef(false)
+
+  const setUploading = (val) => {
+    isUploadingRef.current = val
+    setIsUploading(val)
+  }
   
   // Check backend status on mount and periodically
   useEffect(() => {
@@ -22,10 +29,10 @@ function Upload() {
   
   const checkBackendStatus = async () => {
     // Don't run health check while upload is in progress — backend may be busy
-    if (isUploading) return
+    if (isUploadingRef.current) return
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
       
       const response = await fetch(`${API_BASE_URL}/api/v1/ping`, {
         signal: controller.signal
@@ -39,8 +46,7 @@ function Upload() {
         setBackendStatus('offline')
       }
     } catch (error) {
-      // Only mark offline if we're not in the middle of an upload
-      if (!isUploading) setBackendStatus('offline')
+      if (!isUploadingRef.current) setBackendStatus('offline')
     }
   }
   
@@ -80,7 +86,7 @@ function Upload() {
   const handleUpload = async () => {
     if (!file) return
     
-    setIsUploading(true)
+    setUploading(true)
     setUploadError(null)
     
     try {
@@ -107,7 +113,7 @@ function Upload() {
     } catch (error) {
       console.error('Upload error:', error)
       setUploadError(error.message)
-      setIsUploading(false)
+      setUploading(false)
     }
   }
 
