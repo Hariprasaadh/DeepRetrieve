@@ -7,46 +7,22 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
 import fitz  # PyMuPDF
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from qdrant_client.http.models import PointStruct
 
 try:
-    import camelot
-    CAMELOT_AVAILABLE = True
+    from img2table.document import PDF
+    from img2table.ocr import TesseractOCR # we'll use Tesseract as the default OCR for tables
+    IMG2TABLE_AVAILABLE = True
 except ImportError:
-    CAMELOT_AVAILABLE = False
+    IMG2TABLE_AVAILABLE = False
 
-from mcp_server.config import OUTPUT_FOLDER, IMAGES_FOLDER, TABLES_FOLDER, GOOGLE_API_KEY, GEMINI_MODEL
+from mcp_server.config import OUTPUT_FOLDER, IMAGES_FOLDER, TABLES_FOLDER
 from mcp_server.embeddings import embed_text, embed_image_base64
 from mcp_server.retriever import get_qdrant_client, COLLECTION_NAME
 
-# Initialize Gemini for image captioning
-genai.configure(api_key=GOOGLE_API_KEY)
-_caption_model = genai.GenerativeModel(GEMINI_MODEL)
 
 
-def generate_image_caption(image_base64: str, source: str, page: int) -> str:
-    """Use Gemini vision to generate a descriptive caption for an image"""
-    try:
-        image_bytes = base64.b64decode(image_base64)
-        image_part = {"mime_type": "image/png", "data": image_bytes}
-        prompt = (
-            "Describe this image concisely in 1-2 sentences. Focus on the key information it conveys "
-            "(e.g., chart trends, diagram structure, table data, figure content). "
-            "Do not say 'this image shows' — just describe the content directly."
-        )
-        response = _caption_model.generate_content(
-            [prompt, image_part],
-            safety_settings={
-                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            }
-        )
-        return response.text.strip()
-    except Exception as e:
-        print(f"Caption generation failed for page {page}: {e}")
-        return f"Image from page {page} of {source}"
+
 
 
 def ensure_output_folders():
@@ -72,7 +48,16 @@ def clean_text(text: str) -> str:
 
 
 def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
-    """Extract text from PDF pages"""
+    """Extract text from PDF pages, using Tesseract OCR for image-only pages"""
+    import time
+    try:
+        import pytesseract
+        from PIL import Image
+        import io
+        HAS_TESSERACT = True
+    except ImportError:
+        HAS_TESSERACT = False
+    
     doc = fitz.open(pdf_path)
     texts = []
     
@@ -81,7 +66,27 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
         text = page.get_text()
         text = clean_text(text)
         
-        if text and len(text) > 50:  # Skip very short/empty pages
+        # If no text found (image-only/scanned PDF), use local Tesseract OCR
+        if not text or len(text.strip()) < 50:
+            print(f"📄 Page {page_num + 1} has no text natively. Using local OCR...")
+            if HAS_TESSERACT:
+                try:
+                    # Render page to image (300 DPI is recommended for good Tesseract OCR)
+                    pix = page.get_pixmap(dpi=300)
+                    image_bytes = pix.tobytes("png")
+                    img = Image.open(io.BytesIO(image_bytes))
+                    
+                    text = pytesseract.image_to_string(img).strip()
+                    if text:
+                        print(f"✅ Local Tesseract OCR successful for page {page_num + 1} ({len(text)} chars)")
+                    else:
+                        print(f"⚠️ Local Tesseract returned empty text for page {page_num + 1}.")
+                except Exception as e:
+                    print(f"❌ Local Tesseract failed on page {page_num + 1}: {e}")
+            else:
+                print(f"❌ Local Tesseract not installed/available. Skipping OCR for page {page_num + 1}.")
+        
+        if text and len(text) > 10:  # Skip completely empty/unreadable pages
             texts.append({
                 "content": text,
                 "page": page_num + 1,
@@ -125,7 +130,7 @@ def extract_images_from_pdf(pdf_path: str, min_size: int = 100) -> List[Dict]:
                 # Convert to base64
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
                 
-                caption = generate_image_caption(image_base64, source_name, page_num + 1)
+                caption = f"Image from page {page_num + 1} of {source_name}"
                 images.append({
                     "image_base64": image_base64,
                     "path": str(image_path),
@@ -142,9 +147,9 @@ def extract_images_from_pdf(pdf_path: str, min_size: int = 100) -> List[Dict]:
 
 
 def extract_tables_from_pdf(pdf_path: str) -> List[Dict]:
-    """Extract tables from PDF using Camelot"""
-    if not CAMELOT_AVAILABLE:
-        print("Camelot not available, skipping table extraction")
+    """Extract tables from PDF using img2table"""
+    if not IMG2TABLE_AVAILABLE:
+        print("img2table not available, skipping table extraction")
         return []
     
     ensure_output_folders()
@@ -152,36 +157,44 @@ def extract_tables_from_pdf(pdf_path: str) -> List[Dict]:
     source_name = os.path.basename(pdf_path)
     
     try:
-        # Extract tables
-        table_list = camelot.read_pdf(pdf_path, pages="all", flavor="lattice")
+        # Load PDF Document
+        pdf = PDF(pdf_path)
         
-        if len(table_list) == 0:
-            # Try stream flavor
-            table_list = camelot.read_pdf(pdf_path, pages="all", flavor="stream")
         
-        for i, table in enumerate(table_list):
-            df = table.df
-            
-            if df.empty or (df.shape[0] < 2 and df.shape[1] < 2):
+        extracted = pdf.extract_tables()
+        
+        # extracted is a dict of page_number -> list of ExtractedTable objects
+        table_counter = 1
+        for page_num, page_tables in extracted.items():
+            if not page_tables:
                 continue
-            
-            # Save as CSV
-            csv_filename = f"{Path(pdf_path).stem}_table_{i+1}.csv"
-            csv_path = TABLES_FOLDER / csv_filename
-            df.to_csv(csv_path, index=False)
-            
-            # Convert to string
-            table_content = df.to_string()
-            
-            tables.append({
-                "content": table_content,
-                "csv_path": str(csv_path),
-                "page": table.page,
-                "source": source_name,
-                "table_index": i + 1
-            })
+                
+            for table in page_tables:
+                df = table.df
+                if df.empty or (df.shape[0] < 2 and df.shape[1] < 2):
+                    continue
+                
+                # Save as CSV
+                csv_filename = f"{Path(pdf_path).stem}_table_{table_counter}.csv"
+                csv_path = TABLES_FOLDER / csv_filename
+                df.to_csv(csv_path, index=False)
+                
+                # Convert to string representation for embedding
+                table_content = df.to_string(index=False, header=False).strip()
+                if not table_content:
+                    continue
+                    
+                tables.append({
+                    "content": table_content,
+                    "csv_path": str(csv_path),
+                    "page": page_num + 1,  # img2table is 0-indexed, we use 1-indexed internally
+                    "source": source_name,
+                    "table_index": table_counter
+                })
+                table_counter += 1
+                
     except Exception as e:
-        print(f"Error extracting tables: {e}")
+        print(f"Error extracting tables with img2table: {e}")
     
     return tables
 

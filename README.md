@@ -3,7 +3,7 @@
 
 ### Agentic Multimodal RAG System
 
-**DeepRetrieve** is an agentic Retrieval-Augmented Generation system that lets you chat with your PDF documents. It extracts and understands **text, images, and tables** from PDFs, uses **CLIP embeddings** for multimodal semantic search, and uses a **FastMCP-powered tool orchestration layer** to autonomously decide whether to search your documents, the live web, or both — routing through **Qdrant vector search** and **Tavily web search** before synthesizing a precise, source-attributed answer with **Google Gemini 2.5 Flash**.
+**DeepRetrieve** is an agentic Retrieval-Augmented Generation system that lets you chat with your PDF documents. It extracts and understands **text, images, and tables** from PDFs, uses **Gemini Embedding 2** for multimodal semantic search, and uses a **FastMCP-powered tool orchestration layer** to autonomously decide whether to search your documents, the live web, or both — routing through **Qdrant vector search** and **Tavily web search** before synthesizing a precise, source-attributed answer with **Google Gemini 2.5 Flash**.
 
 <div align="center">
 
@@ -23,7 +23,7 @@
 
 | Phase | What happens |
 |---|---|
-| **Upload** | PDF → PyMuPDF extracts text chunks & images, Camelot extracts tables → Gemini Vision captions every image → CLIP embeds all modalities → stored in Qdrant Cloud |
+| **Upload** | PDF → PyMuPDF extracts text, Tesseract OCRs image-only pages, img2table extracts tables → Gemini Embedding 2 embeds all modalities into a unified 3072-dim space → stored in Qdrant Cloud |
 | **Query** | User question → Gemini agent autonomously calls `rag_retrieve` (vector search) and/or `web_search` (Tavily) via function calling → synthesizes final answer with source attribution |
 | **MCP** | The same RAG tools are exposed as a **Model Context Protocol server** via FastMCP, allowing any MCP-compatible AI client to connect and use the knowledge base directly |
 
@@ -34,9 +34,9 @@
 ### 🎯 Core Capabilities
 - **📄 Multimodal PDF Processing** — extracts text, images, and tables in one pipeline
 - **🤖 Agentic RAG** — Gemini 2.5 Flash autonomously orchestrates tool calls to answer questions
-- **🔍 Unified Semantic Search** — CLIP embeddings enable cross-modal text ↔ image retrieval
-- **📊 Table Understanding** — tables extracted via Camelot, stored and retrieved as structured data
-- **🖼️ Visual Analysis** — charts and diagrams are captioned by Gemini Vision before indexing
+- **🔍 Unified Semantic Search** — Gemini Embedding 2 enables cross-modal text ↔ image retrieval in a unified 3072-dim space
+- **📊 Table Understanding** — tables extracted via `img2table` (with OpenCV), stored and retrieved as structured data
+- **👁️ Scanned Document OCR** — automatic fallback to local Tesseract OCR for scanned/image-only PDFs
 - **🌐 Web Search Fallback** — Tavily API fills gaps when documents don't contain the answer
 - **⚡ Efficient Retrieval** — Qdrant Cloud with Binary Quantization (~32× storage reduction)
 - **🧠 Conversation Memory** — multi-turn chat with last 3 turns passed as context
@@ -62,6 +62,7 @@
 | Qdrant Cloud | — | [Free tier](https://cloud.qdrant.io/) |
 | Google AI Studio | — | [Free API key](https://ai.google.dev/) |
 | Tavily | — | [Free tier](https://tavily.com/) — for web search |
+| Tesseract OCR | — | Required for OCR fallback. Install via package manager (`apt-get install tesseract-ocr` or [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki)) |
 
 ### Installation
 
@@ -246,9 +247,9 @@ All configuration lives in `backend/mcp_server/config.py`:
 
 ```python
 # Model
-CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # Local CLIP (CPU/GPU auto-detected)
-EMBEDDING_DIM   = 512
-GEMINI_MODEL    = "gemini-2.5-flash"
+EMBEDDING_DIM          = 3072
+GEMINI_MODEL           = "gemini-2.5-flash"
+GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview"
 
 # Retrieval
 COLLECTION_NAME      = "multimodal_rag"
@@ -269,12 +270,12 @@ MAX_RETRIES             = 3
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite, React Router, Framer Motion |
-| Backend | FastAPI, Uvicorn, Python 3.10+ |
-| Embeddings | CLIP `openai/clip-vit-base-patch32` (local) |
+| Backend | FastAPI, Uvicorn, Python 3.12+ |
+| Embeddings | Google `gemini-embedding-2-preview` (multimodal, 3072-dim) |
 | Vector DB | Qdrant Cloud (Binary Quantization, Cosine Similarity) |
-| LLM | Google Gemini 2.5 Flash (agentic function calling + vision) |
+| LLM | Google Gemini 2.5 Flash (agentic function calling) |
 | Web Search | Tavily Search API |
-| PDF Parsing | PyMuPDF (text + images), Camelot (tables) |
+| PDF Parsing | PyMuPDF (text), img2table (tables), Tesseract (OCR) |
 | MCP Protocol | FastMCP |
 | Deployment | Vercel (frontend) |
 

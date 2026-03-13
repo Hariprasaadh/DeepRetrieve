@@ -5,7 +5,7 @@ from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, BinaryQuantization, BinaryQuantizationConfig
 
 from .config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_DIM
-from .embeddings import embed_text, embed_image
+from .embeddings import embed_text, embed_query, embed_image
 
 # Connect to Qdrant immediately
 print(f"Connecting to Qdrant Cloud at {QDRANT_URL}...")
@@ -68,7 +68,7 @@ def search_similar(
     client = get_qdrant_client()
     
     # Embed the query
-    query_embedding = embed_text(query)
+    query_embedding = embed_query(query)
     
     # Build filter if content type specified
     query_filter = None

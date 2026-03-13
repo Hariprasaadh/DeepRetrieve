@@ -18,14 +18,12 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 # Qdrant Configuration
 COLLECTION_NAME = "multimodal_rag"
-EMBEDDING_DIM = 512
-
-# CLIP Configuration (Local)
-CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
+EMBEDDING_DIM = 3072  # gemini-embedding-2-preview default output dimension
 
 
-# Gemini Configuration  
+# Gemini Configuration
 GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview"
 
 # RAG Configuration
 TOP_K = 5
