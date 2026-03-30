@@ -41,7 +41,7 @@ function HowItWorks() {
       step: 2,
       icon: Brain,
       title: 'AI indexes everything',
-      description: 'CLIP embeds text, images & tables into vectors. Qdrant stores them with Binary Quantization for fast retrieval.',
+      description: 'BAAI embeddings encode text, images & tables into dense vectors. Qdrant stores them with Binary Quantization for lightning-fast retrieval.',
       color: 'indigo',
       mockup: (
         <div className="relative">
@@ -82,7 +82,7 @@ function HowItWorks() {
       step: 3,
       icon: MessageSquare,
       title: 'Ask & get answers',
-      description: 'Query your documents naturally. Gemini 2.0 synthesizes answers from text, tables, and images with citations.',
+      description: 'Query naturally. A Gemini 2.5 Agent autonomously orchestrates your documents and the live web, streaming cited answers.',
       color: 'purple',
       mockup: (
         <div className="relative">

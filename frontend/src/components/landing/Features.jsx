@@ -65,8 +65,8 @@ function Features() {
       },
       {
         icon: Brain,
-        title: 'CLIP Embeddings',
-        description: '512D vectors that understand both text and images in the same embedding space.',
+        title: 'BAAI Embeddings',
+        description: 'Top-tier 768D local embeddings encoding immense semantic density without API costs.',
         color: 'indigo',
         gradient: 'from-indigo-500/20 to-purple-500/20'
       },
@@ -213,7 +213,7 @@ function Features() {
         <div className="flex justify-center mt-4">
           <span className="text-sm text-slate-500">
             {activeSlide === 0 && 'Core Features'}
-            {activeSlide === 1 && 'MCP Integration'}
+            {activeSlide === 1 && 'Agentic Orchestration'}
             {activeSlide === 2 && 'Technical Stack'}
           </span>
         </div>

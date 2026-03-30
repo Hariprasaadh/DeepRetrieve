@@ -69,7 +69,7 @@ function AppMockup() {
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden sm:flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/5 text-xs font-medium text-slate-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]"></span>
-                Gemini 2.0
+                Gemini 2.5
               </div>
               <button className="text-slate-500 hover:text-white transition-colors p-1"><Share className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.5} /></button>
               <button className="text-slate-500 hover:text-white transition-colors p-1"><MoreHorizontal className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.5} /></button>

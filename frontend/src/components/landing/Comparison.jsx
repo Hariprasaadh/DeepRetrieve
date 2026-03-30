@@ -9,13 +9,13 @@ function Comparison() {
       icon: Search
     },
     {
-      feature: 'Image understanding (CLIP)',
+      feature: 'Image understanding (BLIP)',
       deepRetrieve: true,
       simpleRag: false,
       icon: Image
     },
     {
-      feature: 'Table extraction (Camelot)',
+      feature: 'Table extraction (EasyOCR)',
       deepRetrieve: true,
       simpleRag: false,
       icon: Table2
@@ -52,8 +52,8 @@ function Comparison() {
       color: 'purple'
     },
     {
-      value: '512D',
-      label: 'CLIP embeddings for semantic search',
+      value: '768D',
+      label: 'BAAI embeddings for semantic search',
       color: 'cyan'
     }
   ]
