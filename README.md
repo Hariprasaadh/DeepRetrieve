@@ -1,9 +1,8 @@
-
 # 🔍 DeepRetrieve
 
 ### Agentic Multimodal RAG System
 
-**DeepRetrieve** is an agentic Retrieval-Augmented Generation system that lets you chat with your PDF documents. It extracts and understands **text, images, and tables** from PDFs, uses **Gemini Embedding 2** for multimodal semantic search, and uses a **FastMCP-powered tool orchestration layer** to autonomously decide whether to search your documents, the live web, or both — routing through **Qdrant vector search** and **Tavily web search** before synthesizing a precise, source-attributed answer with **Google Gemini 2.5 Flash**.
+**DeepRetrieve** is an advanced, fully agentic Retrieval-Augmented Generation (RAG) system built to chat with dense PDFs. It processes **text, images, and tables**, utilizing entirely **local, GPU-accelerated embedding models (`BAAI/bge-base`)**, local vision models (`EasyOCR` and `BLIP`), and utilizes the modern `google-genai` SDK to power an autonomous **Gemini 2.5 Flash** agent. The agent dynamically routes queries through **Qdrant vector search** and **Tavily web search** to synthesize streaming, highly detailed, and source-attributed answers.
 
 <div align="center">
 
@@ -15,39 +14,33 @@
 
 ## 🏗️ Architecture
 
-<div align="center">
-  <img src="architecture-diagram.png" alt="DeepRetrieve Architecture Diagram" width="850">
-</div>
-
 ### How it works
 
 | Phase | What happens |
 |---|---|
-| **Upload** | PDF → PyMuPDF extracts text, Tesseract OCRs image-only pages, img2table extracts tables → Gemini Embedding 2 embeds all modalities into a unified 3072-dim space → stored in Qdrant Cloud |
-| **Query** | User question → Gemini agent autonomously calls `rag_retrieve` (vector search) and/or `web_search` (Tavily) via function calling → synthesizes final answer with source attribution |
-| **MCP** | The same RAG tools are exposed as a **Model Context Protocol server** via FastMCP, allowing any MCP-compatible AI client to connect and use the knowledge base directly |
+| **Extraction** | PyMuPDF sequentially reads digital text. For dense visual charts and scanned pages, **EasyOCR (CUDA)** extracts raw text. For generic images, **Salesforce BLIP** generates visual captions entirely locally. |
+| **Embedding** | All modalities are embedded locally using **`BAAI/bge-base-en-v1.5`** generating robust 768-dimensional vectors. |
+| **Indexing** | Embedded chunks are pushed instantly to **Qdrant Cloud** collections. |
+| **Orchestration** | User poses a question. The **Gemini 2.5 Agent** natively utilizes **Automatic Function Calling** to intelligently invoke `rag_retrieve` (for document context) or `web_search` (Tavily, for exterior knowledge). |
+| **Synthesis** | The synthesized answer is streamed back via Server-Sent Events (SSE) with smooth, typewriter-like rendering. |
 
 ---
 
 ## ✨ Features
 
 ### 🎯 Core Capabilities
-- **📄 Multimodal PDF Processing** — extracts text, images, and tables in one pipeline
-- **🤖 Agentic RAG** — Gemini 2.5 Flash autonomously orchestrates tool calls to answer questions
-- **🔍 Unified Semantic Search** — Gemini Embedding 2 enables cross-modal text ↔ image retrieval in a unified 3072-dim space
-- **📊 Table Understanding** — tables extracted via `img2table` (with OpenCV), stored and retrieved as structured data
-- **👁️ Scanned Document OCR** — automatic fallback to local Tesseract OCR for scanned/image-only PDFs
-- **🌐 Web Search Fallback** — Tavily API fills gaps when documents don't contain the answer
-- **⚡ Efficient Retrieval** — Qdrant Cloud with Binary Quantization (~32× storage reduction)
-- **🧠 Conversation Memory** — multi-turn chat with last 3 turns passed as context
-- **📝 Source Attribution** — every answer cites document name, page number, and content type
-- **🔌 MCP Server** — expose your knowledge base to any MCP-compatible AI client
+- **📄 Complete Multimodal Parsing** — Extracts exact text, captions images via `BLIP`, and intelligently parses technical tables and scanned graphs via `EasyOCR`.
+- **🚀 Local ML Acceleration** — Embeddings and OCR pipelines run locally on your hardware (CUDA/CPU), drastically reducing strict reliance on costly third-party ML APIs.
+- **🤖 Agentic Routing** — Gemini 2.5 Flash natively orchestrates its own pipeline, seamlessly deciding when to search your documents vs when to fall back to the live internet.
+- **🌐 Web Search Fallback** — Tavily API integration fills the gaps dynamically when PDF documents lack the modern context required to answer a query.
+- **⚡ Qdrant Vector Search** — Scalable, ultra-fast cosine similarity matching.
+- **🧠 Continuous Memory** — Multi-turn chat context ensures follow-up questions are resolved flawlessly.
 
-### 🎨 User Interface
-- **Landing Page** — hero section, feature showcase, comparison table, live upload widget
-- **Interactive Chat** — real-time Q&A with animated loading states and source cards
-- **Split View** — simultaneous chat and PDF preview panels
-- **Responsive Design** — works on desktop and mobile
+### 🎨 Premium UI / UX
+- **Typewriter Streaming** — Micro-chunked SSE stream ensures incredibly fluid, butter-smooth visual text rendering.
+- **Exquisite Markdown** — Fully customized Tailwind Typography (`prose`) for high-fidelity rendering, beautiful code blocks, and automatically structured tabular data.
+- **Interactive Image Viewer** — Hovering over visual sources reveals an active `<Expand />` action, opening actual extracted diagrams directly in a sleek, frosted-glass Modal Overlay!
+- **Source Attribution** — Every single chat interaction carries verified Source Cards dictating Confidence, Page Number, and Document identity.
 
 ---
 
@@ -55,14 +48,14 @@
 
 ### Prerequisites
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Python | 3.10+ | |
-| Node.js | 18+ | |
-| Qdrant Cloud | — | [Free tier](https://cloud.qdrant.io/) |
-| Google AI Studio | — | [Free API key](https://ai.google.dev/) |
-| Tavily | — | [Free tier](https://tavily.com/) — for web search |
-| Tesseract OCR | — | Required for OCR fallback. Install via package manager (`apt-get install tesseract-ocr` or [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki)) |
+| Requirement | Notes |
+|---|---|
+| **Python** | 3.10+ |
+| **Node.js** | 18+ |
+| **CUDA Drivers** | (Optional but Highly Recommended) For massive speedups on EasyOCR and BLIP parsing. |
+| **Qdrant Cloud** | [Free tier](https://cloud.qdrant.io/) cluster for vector storage. |
+| **Google AI Studio** | [Free API key](https://ai.google.dev/) for Gemini 2.5. |
+| **Tavily** | [Free tier](https://tavily.com/) for Agentic live-web search. |
 
 ### Installation
 
@@ -76,9 +69,12 @@ cd DeepRetrieve
 ```bash
 cd backend
 
-# Install dependencies
-uv pip install -r requirements.txt
-# or: pip install -r requirements.txt
+# Create a virtual environment and install ML dependencies
+python -m venv ai_env
+ai_env\Scripts\activate  # Windows
+# source ai_env/bin/activate # Mac/Linux
+
+pip install -r requirements.txt
 ```
 
 #### 3. Environment configuration
@@ -86,21 +82,16 @@ uv pip install -r requirements.txt
 Create a `.env` file inside the `backend/` directory:
 
 ```env
-# Qdrant Cloud
+# Qdrant Cloud DB
 QDRANT_URL=https://your-cluster-url.qdrant.io
 QDRANT_API_KEY=your_qdrant_api_key
 
-# Google Gemini
+# Google Gemini Intelligence
 GOOGLE_API_KEY=your_google_api_key
 
 # Tavily Web Search
 TAVILY_API_KEY=your_tavily_api_key
 ```
-
-> **Get your keys:**
-> - **Qdrant** → [cloud.qdrant.io](https://cloud.qdrant.io/) — create a free cluster and copy the URL + API key
-> - **Google Gemini** → [ai.google.dev](https://ai.google.dev/) — generate a Gemini API key
-> - **Tavily** → [tavily.com](https://tavily.com/) — sign up for a free search API key
 
 #### 4. Frontend setup
 ```bash
@@ -113,171 +104,48 @@ npm run dev
 ```bash
 # In a separate terminal
 cd backend
-python api/run.py
+python main.py
 ```
 
-The app will be running at:
-- **Frontend**: http://localhost:5173
+The application will be running at:
+- **Frontend Panel**: http://localhost:5173
 - **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
----
-
-## 📖 Usage
-
-### Web Interface
-
-1. Go to http://localhost:5173
-2. Upload a PDF using the upload widget on the landing page
-3. You'll be redirected to the chat interface automatically
-4. Ask any question — the agent searches your document and/or the web as needed
-5. View answers with source cards showing document name, page, and content type
-
-### Query via API
-
-```python
-import requests
-
-# Upload a PDF
-with open("my_document.pdf", "rb") as f:
-    r = requests.post("http://localhost:8000/api/v1/upload", files={"file": f})
-print(r.json())
-
-# Ask a question
-r = requests.post("http://localhost:8000/api/v1/query", json={
-    "query": "What are the key findings?",
-    "top_k": 5,
-    "conversation_history": []
-})
-print(r.json()["answer"])
-```
-
----
-
-## 🔌 MCP Server
-
-DeepRetrieve ships with a **Model Context Protocol (MCP) server** built with [FastMCP](https://github.com/jlowin/fastmcp). This lets any MCP-compatible AI client (Claude Desktop, Cursor, etc.) connect directly to your document knowledge base.
-
-### Available MCP Tools
-
-| Tool | Description |
-|---|---|
-| `rag_retrieve` | Semantic vector search over all indexed documents (text, images, tables) |
-| `fallback_web_search` | Live web search via Tavily when documents don't contain the answer |
-| `hybrid_search` | RAG retrieval with automatic web fallback if relevance score is low |
-| `generate_answer` | LLM answer synthesis from a given context string |
-| `get_knowledge_base_info` | Returns collection stats (document count, vector count, etc.) |
-
-
+- **API Swagger Docs**: http://localhost:8000/docs
 
 ---
 
 ## 🔧 API Reference
 
-All endpoints are prefixed with `/api/v1`.
-
-### `GET /api/v1/ping`
-Health check.
-```json
-{ "status": "ok", "message": "DeepRetrieve API is running!" }
-```
+All endpoints natively expose `/api/v1`.
 
 ### `POST /api/v1/upload`
-Upload and index a PDF document.
+Upload and locally process a PDF document.
 
-**Request:** `multipart/form-data` with a `file` field (PDF only)
+**Request:** `multipart/form-data` with a `file` field.
+**Response:** Success stats regarding how many text blocks, images, and tables were encoded to vector space.
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Successfully processed document.pdf",
-  "filename": "document.pdf",
-  "texts_added": 45,
-  "images_added": 12,
-  "tables_added": 3
-}
-```
+### `POST /api/v1/query-stream`
+Ask the Agent a question dynamically, returning a Server-Sent Events (SSE) stream containing metadata overrides, tool executions, and typewriter chat chunks.
 
-### `POST /api/v1/query`
-Ask a question. The agent autonomously decides which tools to use.
-
-**Request:**
-```json
-{
-  "query": "What are the main conclusions?",
-  "top_k": 5,
-  "conversation_history": [
-    { "role": "user", "content": "What is this document about?" },
-    { "role": "assistant", "content": "It covers..." }
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "query": "What are the main conclusions?",
-  "answer": "The document concludes that...",
-  "sources": [
-    {
-      "type": "text",
-      "content": "Content preview...",
-      "source": "document.pdf",
-      "page": 4,
-      "score": 0.91
-    }
-  ],
-  "used_web_search": false
-}
-```
-
-### `GET /api/v1/tools`
-List all registered MCP tools.
+### `GET /api/v1/upload-progress/{filename}`
+Stream real-time background parsing percentage dynamically to the frontend during hefty PDF processing.
 
 ### `DELETE /api/v1/reset`
-Clear the Qdrant collection and all extracted images/tables.
+Wipe the active Qdrant vector collection and rigorously clear local cached image hierarchies to reset the brain.
 
 ---
 
-## ⚙️ Configuration
-
-All configuration lives in `backend/mcp_server/config.py`:
-
-```python
-# Model
-EMBEDDING_DIM          = 3072
-GEMINI_MODEL           = "gemini-2.5-flash"
-GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview"
-
-# Retrieval
-COLLECTION_NAME      = "multimodal_rag"
-TOP_K                = 5
-RELEVANCE_THRESHOLD  = 0.5   # Minimum score before triggering web fallback
-
-# Rate limiting (to stay within free-tier quotas)
-RATE_LIMIT_WINDOW       = 60   # seconds
-MAX_CALLS_PER_WINDOW    = 10
-MIN_DELAY_BETWEEN_CALLS = 2    # seconds
-MAX_RETRIES             = 3
-```
-
----
-
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack Evolution
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite, React Router, Framer Motion |
-| Backend | FastAPI, Uvicorn, Python 3.12+ |
-| Embeddings | Google `gemini-embedding-2-preview` (multimodal, 3072-dim) |
-| Vector DB | Qdrant Cloud (Binary Quantization, Cosine Similarity) |
-| LLM | Google Gemini 2.5 Flash (agentic function calling) |
-| Web Search | Tavily Search API |
-| PDF Parsing | PyMuPDF (text), img2table (tables), Tesseract (OCR) |
-| MCP Protocol | FastMCP |
-| Deployment | Vercel (frontend) |
+| **Frontend** | React 18, Vite, Tailwind CSS, Framer Motion, `react-markdown` |
+| **Backend Core** | FastAPI, Uvicorn, Python 3.12 |
+| **Embeddings** | `BAAI/bge-base-en-v1.5` (768-dim, running locally via sentence-transformers) |
+| **Vector DB** | Qdrant Cloud |
+| **LLM Orchestration** | Google Gemini 2.5 Flash via `google-genai` Automated Function Calling |
+| **Web Search** | Tavily Search SDK |
+| **Document Vision** | PyMuPDF (Text), EasyOCR (Scanned/Dense Tables), Salesforce BLIP (Vision Captioning) |
 
 ---
 
@@ -285,6 +153,6 @@ MAX_RETRIES             = 3
 
 ### ⭐ Star this repo if you find it helpful!
 
-*Empowering intelligent document understanding through multimodal RAG*
+*Empowering intelligent, highly-detailed document understanding through multimodal agentic RAG*
 
 </div>

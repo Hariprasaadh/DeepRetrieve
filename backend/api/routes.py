@@ -181,7 +181,7 @@ Question: {request.query}"""
         config = types.GenerateContentConfig(
             tools=[rag_retrieve_func, web_search_func],
             system_instruction=system_instruction,
-            temperature=0.0
+            temperature=0.3
         )
 
         print("🤖 [AGENT] Gemini deciding which tools to use...")
@@ -241,11 +241,19 @@ async def query_stream(request: QueryRequest):
                         elif chunk_text.strip().startswith("Fig.") or chunk_text.strip().startswith("Figure"):
                             src_type = "image"
                             
+                        # If the source actually has an image path, format its URL
+                        image_url = None
+                        if r.get("path"):
+                            import os
+                            filename = os.path.basename(r.get("path"))
+                            image_url = f"http://localhost:8000/images/{filename}"
+                            
                         sources.append({
                             "type": src_type,
                             "content": chunk_text[:500],
                             "source": r.get("source"),
                             "page": r.get("page"),
+                            "image_url": image_url,
                             "score": r.get("score", 0)
                         })
                 tool_calls.append("rag_retrieve")
@@ -279,11 +287,13 @@ async def query_stream(request: QueryRequest):
             history_section = f"\n\nCONVERSATION HISTORY (for context):\n{history_text}\n" if history_text else ""
             system_instruction = """You are an expert research assistant and data synthesizer.
 
+CRITICAL INSTRUCTION:
+You have active access to the internet via the `web_search` tool. NEVER refuse to answer a question because "it is beyond your knowledge cutoff", "in the future", or "you don't have real-time information." Instead, YOU MUST actively invoke the `web_search` tool to fetch the current information requested.
+
 TOOL SELECTION GUIDELINES:
-1. First, try rag_retrieve to search the knowledge base
-2. If the knowledge base results are NOT relevant or insufficient for the question, use web_search
-3. Use web_search when asked about topics clearly outside your knowledge base
-4. Use the conversation history to understand follow-up questions
+1. CRITICAL: YOU MUST ALWAYS trigger `rag_retrieve` FIRST to check the local document knowledge base before answering ANY user request! Do NOT answer general or theoretical questions using your own parametric memory. Prove you are a RAG agent by ALWAYS doing a search.
+2. If the local knowledge base results are NOT relevant, insufficient, or the user asks for modern/recent events, YOU MUST invoke `web_search`.
+3. Use the conversation history to understand follow-up questions.
 
 RESPONSE GUIDELINES:
 1. Provide highly detailed, comprehensive, and exhaustive answers. Never be brief unless explicitly asked.
@@ -296,7 +306,7 @@ RESPONSE GUIDELINES:
             config = types.GenerateContentConfig(
                 tools=[rag_retrieve_func, web_search_func],
                 system_instruction=system_instruction,
-                temperature=0.0
+                temperature=0.3
             )
 
             prompt = f"""{history_section}

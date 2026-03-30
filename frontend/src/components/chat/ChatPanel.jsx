@@ -253,7 +253,7 @@ function ChatPanel({ onSourcesUpdate }) {
                                                     <Globe className="w-2.5 h-2.5" /> Web search used
                                                 </span>
                                             )}
-                                            <div className="prose prose-invert prose-p:leading-7 prose-strong:text-indigo-200 prose-code:text-indigo-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded max-w-none">
+                                            <div className="markdown-body">
                                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                     {msg.content}
                                                 </ReactMarkdown>

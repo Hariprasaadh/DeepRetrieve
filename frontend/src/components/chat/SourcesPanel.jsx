@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Table2, Image as ImageIcon, Globe, ChevronDown, Copy, Check } from 'lucide-react';
+import { FileText, Table2, Image as ImageIcon, Globe, ChevronDown, Copy, Check, X, Expand } from 'lucide-react';
 
 const TYPE_META = {
     text:  { icon: FileText,  label: 'Text',  badge: 'text-sky-400 bg-sky-500/10' },
@@ -61,7 +61,31 @@ function CopyButton({ text }) {
     );
 }
 
-function SourceCard({ source, index }) {
+function ImageModal({ imageUrl, onClose }) {
+    if (!imageUrl) return null;
+    return (
+        <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-12 animate-[fadeIn_0.2s_ease-out]"
+            onClick={onClose}
+        >
+            <div className="relative max-w-full max-h-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                <button 
+                    onClick={onClose}
+                    className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md"
+                >
+                    <X className="w-5 h-5"/>
+                </button>
+                <img 
+                    src={imageUrl} 
+                    alt="Source Extract" 
+                    className="max-w-full max-h-[85vh] object-contain rounded-xl border border-white/10 shadow-2xl"
+                />
+            </div>
+        </div>
+    );
+}
+
+function SourceCard({ source, index, onOpenImage }) {
     const [expanded, setExpanded] = useState(false);
 
     const score = source.score || 0;
@@ -107,7 +131,31 @@ function SourceCard({ source, index }) {
                     </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                    <Icon className="w-3.5 h-3.5 text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                    {source.image_url && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onOpenImage(source.image_url); }}
+                            className="p-1 mr-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded transition-colors group/btn border border-indigo-500/20"
+                            title="View Full Image"
+                        >
+                            <Expand className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
+                        </button>
+                    )}
+                    
+                    {source.type === 'web' && source.source ? (
+                        <a 
+                            href={source.source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-slate-600 hover:text-blue-400 transition-colors hover:scale-110 mr-0.5"
+                            title="Visit Website"
+                        >
+                            <Icon className="w-3.5 h-3.5" />
+                        </a>
+                    ) : (
+                        <Icon className="w-3.5 h-3.5 text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                    )}
+                    
                     <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
                 </div>
             </div>
@@ -140,7 +188,10 @@ function SourceCard({ source, index }) {
 }
 
 function SourcesPanel({ sources = [] }) {
+    const [modalImage, setModalImage] = useState(null);
+
     return (
+        <>
         <div className="flex flex-col h-full bg-[#0a0a12] border-l border-white/5">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
@@ -152,7 +203,7 @@ function SourcesPanel({ sources = [] }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
                 {sources.length > 0 ? (
                     sources.map((source, idx) => (
-                        <SourceCard key={idx} source={source} index={idx} />
+                        <SourceCard key={idx} source={source} index={idx} onOpenImage={setModalImage} />
                     ))
                 ) : (
                     <div className="p-4 mt-4 text-center">
@@ -161,6 +212,9 @@ function SourcesPanel({ sources = [] }) {
                 )}
             </div>
         </div>
+        
+        {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
+        </>
     );
 }
 

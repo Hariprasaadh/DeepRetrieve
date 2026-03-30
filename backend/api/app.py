@@ -37,8 +37,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api/v1", tags=["RAG"])
+from fastapi.staticfiles import StaticFiles
+from mcp_server.config import IMAGES_FOLDER
 
+app.include_router(router, prefix="/api/v1", tags=["RAG"])
+app.mount("/images", StaticFiles(directory=str(IMAGES_FOLDER)), name="images")
 
 @app.get("/")
 async def root():
