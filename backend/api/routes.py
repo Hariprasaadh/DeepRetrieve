@@ -232,9 +232,18 @@ async def query_stream(request: QueryRequest):
                 res = search_similar(query=query, top_k=int(top_k))
                 for r in res:
                     if r.get("content"):
+                        src_type = r.get("type", "unknown")
+                        chunk_text = r.get("content", "")
+                        
+                        # Override tagging logic to force actual images and captions to show as 'image'
+                        if "[Text in image]:" in chunk_text or "[Figure]:" in chunk_text:
+                            src_type = "image"
+                        elif chunk_text.strip().startswith("Fig.") or chunk_text.strip().startswith("Figure"):
+                            src_type = "image"
+                            
                         sources.append({
-                            "type": r.get("type", "unknown"),
-                            "content": r.get("content", "")[:500],
+                            "type": src_type,
+                            "content": chunk_text[:500],
                             "source": r.get("source"),
                             "page": r.get("page"),
                             "score": r.get("score", 0)
