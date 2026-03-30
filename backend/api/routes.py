@@ -308,9 +308,16 @@ Question: {request.query}"""
                             yield "event: text\n\n"
                             metadata_sent = True
                             
-                        chunk_payload = json.dumps({"text": chunk.text})
-                        yield f"data: {chunk_payload}\n\n"
-                        await asyncio.sleep(0.01)  # small breathing room
+                        # Gemini often returns huge chunks at once (entire paragraphs).
+                        # To make the UI feel butter smooth, we break the chunk into tiny 4-character pieces 
+                        # and yield them with a microscopic delay to simulate typing!
+                        chunk_text = chunk.text
+                        chunk_size = 4
+                        for i in range(0, len(chunk_text), chunk_size):
+                            piece = chunk_text[i:i+chunk_size]
+                            chunk_payload = json.dumps({"text": piece})
+                            yield f"data: {chunk_payload}\n\n"
+                            await asyncio.sleep(0.01)  # microscopic delay for smooth typing effect
                         
                 if not metadata_sent:
                     # If it somehow generated no text, still send metadata
