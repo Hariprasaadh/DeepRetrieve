@@ -1,6 +1,8 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Paperclip, Sparkles, Plus, ArrowUp, RotateCcw, Globe, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -62,11 +64,20 @@ function ChatPanel({ onSourcesUpdate }) {
         setInput('');
         setIsTyping(true);
 
-        // Snapshot history before adding new user turn (backend needs prior turns only)
         const historySnapshot = conversationHistory;
 
+        // Create an empty AI message placeholder that we will update as stream chunks arrive
+        const aiMsgId = Date.now() + 1;
+        setMessages(prev => [...prev, {
+            id: aiMsgId,
+            role: 'ai',
+            content: '',
+            sources: [],
+            usedWeb: false,
+        }]);
+
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/query`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/query-stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -81,38 +92,76 @@ function ChatPanel({ onSourcesUpdate }) {
                 throw new Error(err.detail || `HTTP ${response.status}`);
             }
 
-            const data = await response.json();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let done = false;
+            let fullText = "";
+            let currentEvent = null;
 
-            const aiMsg = {
-                id: Date.now() + 1,
-                role: 'ai',
-                content: data.answer,
-                sources: data.sources || [],
-                usedWeb: data.used_web_search || false,
-            };
-            setMessages(prev => [...prev, aiMsg]);
+            while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                if (value) {
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.replace('event: ', '').trim();
+                        } else if (line.startsWith('data: ')) {
+                            const dataStr = line.replace('data: ', '').trim();
+                            if (!dataStr || dataStr === '{}') continue;
+                            
+                            try {
+                                const data = JSON.parse(dataStr);
+                                
+                                if (currentEvent === 'metadata') {
+                                    // Received sources before text generation
+                                    setMessages(prev => prev.map(msg => 
+                                        msg.id === aiMsgId 
+                                            ? { ...msg, sources: data.sources || [], usedWeb: data.used_web_search || false } 
+                                            : msg
+                                    ));
+                                    if (onSourcesUpdate && data.sources) {
+                                        onSourcesUpdate(data.sources, data.used_web_search);
+                                    }
+                                } else if (currentEvent === 'error') {
+                                    throw new Error(data.error);
+                                } else {
+                                    // Regular text chunk
+                                    if (data.text) {
+                                        fullText += data.text;
+                                        setMessages(prev => prev.map(msg => 
+                                            msg.id === aiMsgId ? { ...msg, content: fullText } : msg
+                                        ));
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error parsing SSE data:", e, dataStr);
+                            }
+                        }
+                    }
+                }
+            }
 
-            // Append both turns to memory
+            // Append both turns to memory once complete
             setConversationHistory(prev => [
                 ...prev,
                 { role: 'user',      content: userMessage },
-                { role: 'assistant', content: data.answer },
+                { role: 'assistant', content: fullText },
             ]);
 
-            if (onSourcesUpdate && data.sources) {
-                onSourcesUpdate(data.sources, data.used_web_search);
-            }
         } catch (error) {
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: 'ai',
-                content: null,
-                error: error.message,
-            }]);
+            setMessages(prev => prev.map(msg => 
+                msg.id === aiMsgId 
+                    ? { ...msg, content: null, error: error.message }
+                    : msg
+            ));
         } finally {
             setIsTyping(false);
         }
     };
+
 
     const handleNewConversation = () => {
         setMessages([]);
@@ -204,8 +253,10 @@ function ChatPanel({ onSourcesUpdate }) {
                                                     <Globe className="w-2.5 h-2.5" /> Web search used
                                                 </span>
                                             )}
-                                            <div className="prose prose-invert prose-p:leading-7 prose-strong:text-indigo-200">
-                                                <div dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                            <div className="prose prose-invert prose-p:leading-7 prose-strong:text-indigo-200 prose-code:text-indigo-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded max-w-none">
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {msg.content}
+                                                </ReactMarkdown>
                                             </div>
                                         </div>
                                     )}

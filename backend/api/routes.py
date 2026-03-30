@@ -1,12 +1,15 @@
 # API routes - 3 essential endpoints only
 
 from typing import Optional, List
+import asyncio
 import os
 import tempfile
 import shutil
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+import json
 
 
 # Request/Response Models
@@ -65,6 +68,9 @@ def get_llm():
 
 router = APIRouter()
 
+# Global store for upload progress (filename -> {status, progress})
+UPLOAD_PROGRESS = {}
+
 
 @router.get("/ping")
 async def ping():
@@ -95,65 +101,53 @@ async def query(request: QueryRequest):
     """Ask a question - Truly Agentic RAG where Gemini decides which tools to use"""
     try:
         from mcp_server.retriever import search_similar
-        from mcp_server.web_search import web_search, format_web_results_as_context
-        from mcp_server.llm import prepare_context_from_results, get_gemini_model, _apply_rate_limit
-        import google.generativeai as genai
+        from mcp_server.web_search import web_search
+        from mcp_server.llm import get_gemini_client
+        from mcp_server.config import GEMINI_MODEL
+        from google import genai
+        from google.genai import types
         
         print(f"\n🤖 [AGENTIC RAG] Query: '{request.query}'")
         
-        # Define tools for Gemini
-        tools = [
-            genai.protos.Tool(
-                function_declarations=[
-                    genai.protos.FunctionDeclaration(
-                        name="rag_retrieve",
-                        description="Search the multimodal RAG vector database for relevant documents, images, and tables. Use this first to find information from uploaded documents.",
-                        parameters=genai.protos.Schema(
-                            type=genai.protos.Type.OBJECT,
-                            properties={
-                                "query": genai.protos.Schema(type=genai.protos.Type.STRING, description="The search query"),
-                                "top_k": genai.protos.Schema(type=genai.protos.Type.INTEGER, description="Number of results (default: 5)")
-                            },
-                            required=["query"]
-                        )
-                    ),
-                    genai.protos.FunctionDeclaration(
-                        name="web_search",
-                        description="Search the web for information. Use this as fallback when RAG doesn't have sufficient information.",
-                        parameters=genai.protos.Schema(
-                            type=genai.protos.Type.OBJECT,
-                            properties={
-                                "query": genai.protos.Schema(type=genai.protos.Type.STRING, description="The search query"),
-                            },
-                            required=["query"]
-                        )
-                    )
-                ]
-            )
-        ]
-        
-        # Initialize agent 
-        model = get_gemini_model()
-        
-        # Define Python functions that can be called
-        def rag_retrieve_func(query: str, top_k: int = 5):
-            print(f"🔍 [TOOL] rag_retrieve | query: '{query}' | top_k: {top_k}")
-            return search_similar(query=query, top_k=int(top_k))
-        
-        def web_search_func(query: str):
-            print(f"🌐 [TOOL] web_search | query: '{query}'")
-            result = web_search(query=query, max_results=5, include_answer=True)
-            return {"success": result.get("success"), "results": result.get("results", []), "answer": result.get("answer")}
-        
-        # Map function names to actual functions
-        available_functions = {
-            "rag_retrieve": rag_retrieve_func,
-            "web_search": web_search_func
-        }
-        
+        client = get_gemini_client()
         sources = []
         used_web = False
         tool_calls = []
+        
+        # Define Python functions that can be called
+        def rag_retrieve_func(query: str, top_k: int = 5):
+            """Search the multimodal RAG vector database for relevant documents, images, and tables. Use this first to find information from uploaded documents."""
+            print(f"🔍 [TOOL] rag_retrieve | query: '{query}' | top_k: {top_k}")
+            res = search_similar(query=query, top_k=int(top_k))
+            for r in res:
+                if r.get("content"):
+                    sources.append(Source(
+                        type=r.get("type", "unknown"),
+                        content=r.get("content", "")[:500],
+                        source=r.get("source"),
+                        page=r.get("page"),
+                        score=r.get("score", 0)
+                    ))
+            tool_calls.append("rag_retrieve")
+            return res
+        
+        def web_search_func(query: str):
+            """Search the web for information. Use this as fallback when RAG doesn't have sufficient information."""
+            print(f"🌐 [TOOL] web_search | query: '{query}'")
+            result = web_search(query=query, max_results=5, include_answer=True)
+            nonlocal used_web
+            used_web = True
+            if result.get("success") and isinstance(result.get("results"), list):
+                for r in result["results"][:5]:
+                    sources.append(Source(
+                        type="web",
+                        content=r.get("content", "")[:500],
+                        source=r.get("url"),
+                        page=None,
+                        score=r.get("score", 0)
+                    ))
+            tool_calls.append("web_search")
+            return {"success": result.get("success"), "results": result.get("results"), "answer": result.get("answer")}
         
         # Build conversation memory context
         history_text = ""
@@ -164,10 +158,8 @@ async def query(request: QueryRequest):
                 history_lines.append(f"{role_label}: {turn.content}")
             history_text = "\n".join(history_lines)
 
-        # Agent loop - let Gemini decide which tools to use
         history_section = f"\n\nCONVERSATION HISTORY (for context):\n{history_text}\n" if history_text else ""
-        prompt = f"""You are a helpful research assistant with access to a knowledge base and web search.{history_section}
-Question: {request.query}
+        system_instruction = """You are an expert research assistant and data synthesizer.
 
 TOOL SELECTION GUIDELINES:
 1. First, try rag_retrieve to search the knowledge base
@@ -175,74 +167,26 @@ TOOL SELECTION GUIDELINES:
 3. Use web_search when asked about topics clearly outside your knowledge base (e.g., current events, general knowledge, frameworks, technologies not in your documents)
 4. Use the conversation history to understand follow-up questions and resolve pronouns/references
 
-IMPORTANT: Do NOT include source citations, file names, or page numbers in your answer. The sources will be provided separately. Focus only on delivering a well-structured, informative response."""
+RESPONSE GUIDELINES:
+1. Provide highly detailed, comprehensive, and exhaustive answers. Never be brief unless explicitly asked.
+2. Break down complex topics into clear, well-structured paragraphs using markdown headers, bold text, and bullet points.
+3. Don't just summarize—explain the "why" and "how" deeply based on the retrieved context. Extensively detail methodology, logic, and reasoning.
+4. Extract and highlight key metrics, qualitative results, and technical parameters whenever available. 
+5. CRITICAL: If the retrieved information contains tabular data, you MUST convert and format it perfectly as a strict Markdown table so it renders correctly on the frontend!
+6. IMPORTANT: Do NOT include source citations, file names, or page numbers in your answer. The sources will be provided separately."""
+
+        prompt = f"""{history_section}
+Question: {request.query}"""
+
+        config = types.GenerateContentConfig(
+            tools=[rag_retrieve_func, web_search_func],
+            system_instruction=system_instruction,
+            temperature=0.0
+        )
 
         print("🤖 [AGENT] Gemini deciding which tools to use...")
-        _apply_rate_limit()
-        
-        chat = model.start_chat()
-        response = chat.send_message(prompt, tools=tools)
-        
-        # Process function calls manually
-        while response.candidates[0].content.parts[0].function_call:
-            function_call = response.candidates[0].content.parts[0].function_call
-            func_name = function_call.name
-            func_args = dict(function_call.args)
-            
-            print(f"🔧 [AGENT] Gemini called: {func_name}({func_args})")
-            tool_calls.append(func_name)
-            
-            # Execute the function
-            if func_name in available_functions:
-                func_result = available_functions[func_name](**func_args)
-                
-                # Collect sources
-                if func_name == "rag_retrieve" and isinstance(func_result, list):
-                    for r in func_result:
-                        if r.get("content"):
-                            sources.append(Source(
-                                type=r.get("type", "unknown"),
-                                content=r.get("content", "")[:500],
-                                source=r.get("source"),
-                                page=r.get("page"),
-                                score=r.get("score", 0)
-                            ))
-                
-                elif func_name == "web_search":
-                    used_web = True
-                    if func_result.get("success") and isinstance(func_result.get("results"), list):
-                        for r in func_result["results"][:5]:
-                            sources.append(Source(
-                                type="web",
-                                content=r.get("content", "")[:500],
-                                source=r.get("url"),
-                                page=None,
-                                score=r.get("score", 0)
-                            ))
-                
-                # Send function response back to Gemini
-                response = chat.send_message(
-                    genai.protos.Content(
-                        parts=[genai.protos.Part(
-                            function_response=genai.protos.FunctionResponse(
-                                name=func_name,
-                                response={"result": func_result}
-                            )
-                        )]
-                    )
-                )
-            else:
-                print(f"⚠️ [AGENT] Unknown function: {func_name}")
-                response = chat.send_message(
-                    genai.protos.Content(
-                        parts=[genai.protos.Part(
-                            function_response=genai.protos.FunctionResponse(
-                                name=func_name,
-                                response={"error": "Function not found"}
-                            )
-                        )]
-                    )
-                )
+        chat = client.chats.create(model=GEMINI_MODEL, config=config)
+        response = chat.send_message(prompt)
         
         # Get final answer from agent
         answer = response.text if response.text else "I couldn't generate an answer."
@@ -258,6 +202,130 @@ IMPORTANT: Do NOT include source citations, file names, or page numbers in your 
             error=None
         )
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/query-stream")
+async def query_stream(request: QueryRequest):
+    """Ask a question with streaming response using Server-Sent Events (SSE)"""
+    try:
+        from mcp_server.retriever import search_similar
+        from mcp_server.web_search import web_search
+        from mcp_server.llm import get_gemini_client
+        from mcp_server.config import GEMINI_MODEL
+        from google import genai
+        from google.genai import types
+        
+        print(f"\n🤖 [AGENTIC RAG STREAM] Query: '{request.query}'")
+        
+        # Build generator that yields SSE strings
+        async def event_generator():
+            client = get_gemini_client()
+            sources = []
+            used_web = False
+            tool_calls = []
+            
+            def rag_retrieve_func(query: str, top_k: int = 5):
+                """Search the multimodal RAG vector database for relevant documents, images, and tables. Use this first to find information from uploaded documents."""
+                print(f"🔍 [TOOL] rag_retrieve | query: '{query}'")
+                res = search_similar(query=query, top_k=int(top_k))
+                for r in res:
+                    if r.get("content"):
+                        sources.append({
+                            "type": r.get("type", "unknown"),
+                            "content": r.get("content", "")[:500],
+                            "source": r.get("source"),
+                            "page": r.get("page"),
+                            "score": r.get("score", 0)
+                        })
+                tool_calls.append("rag_retrieve")
+                return res
+            
+            def web_search_func(query: str):
+                """Search the web for information. Use this as fallback when RAG doesn't have sufficient information."""
+                nonlocal used_web
+                print(f"🌐 [TOOL] web_search | query: '{query}'")
+                result = web_search(query=query, max_results=5, include_answer=True)
+                used_web = True
+                if result.get("success") and isinstance(result.get("results"), list):
+                    for r in result["results"][:5]:
+                        sources.append({
+                            "type": "web",
+                            "content": r.get("content", "")[:500],
+                            "source": r.get("url"),
+                            "score": r.get("score", 0)
+                        })
+                tool_calls.append("web_search")
+                return {"success": result.get("success"), "results": result.get("results", []), "answer": result.get("answer")}
+            
+            history_text = ""
+            if request.conversation_history:
+                history_lines = [
+                    f"{'User' if t.role == 'user' else 'Assistant'}: {t.content}" 
+                    for t in request.conversation_history[-3:]
+                ]
+                history_text = "\n".join(history_lines)
+
+            history_section = f"\n\nCONVERSATION HISTORY (for context):\n{history_text}\n" if history_text else ""
+            system_instruction = """You are an expert research assistant and data synthesizer.
+
+TOOL SELECTION GUIDELINES:
+1. First, try rag_retrieve to search the knowledge base
+2. If the knowledge base results are NOT relevant or insufficient for the question, use web_search
+3. Use web_search when asked about topics clearly outside your knowledge base
+4. Use the conversation history to understand follow-up questions
+
+RESPONSE GUIDELINES:
+1. Provide highly detailed, comprehensive, and exhaustive answers. Never be brief unless explicitly asked.
+2. Break down complex topics into clear, well-structured paragraphs using markdown headers, bold text, and bullet points.
+3. Don't just summarize—explain the "why" and "how" deeply based on the retrieved context. Extensively detail methodology, logic, and reasoning.
+4. Extract and highlight key metrics, qualitative results, and technical parameters whenever available. 
+5. CRITICAL: If the retrieved information contains tabular data, you MUST convert and format it perfectly as a strict Markdown table so it renders correctly on the frontend!
+6. IMPORTANT: Do NOT include source citations, file names, or page numbers in your answer. The sources will be provided separately."""
+
+            config = types.GenerateContentConfig(
+                tools=[rag_retrieve_func, web_search_func],
+                system_instruction=system_instruction,
+                temperature=0.0
+            )
+
+            prompt = f"""{history_section}
+Question: {request.query}"""
+            
+            try:
+                chat = client.chats.create(model=GEMINI_MODEL, config=config)
+                stream_response = chat.send_message_stream(prompt)
+                
+                metadata_sent = False
+                
+                for chunk in stream_response:
+                    if chunk.text:
+                        if not metadata_sent:
+                            # Send metadata just before the first text chunk
+                            meta_payload = json.dumps({"sources": sources, "used_web_search": used_web})
+                            yield f"event: metadata\ndata: {meta_payload}\n\n"
+                            yield "event: text\n\n"
+                            metadata_sent = True
+                            
+                        chunk_payload = json.dumps({"text": chunk.text})
+                        yield f"data: {chunk_payload}\n\n"
+                        await asyncio.sleep(0.01)  # small breathing room
+                        
+                if not metadata_sent:
+                    # If it somehow generated no text, still send metadata
+                    meta_payload = json.dumps({"sources": sources, "used_web_search": used_web})
+                    yield f"event: metadata\ndata: {meta_payload}\n\n"
+                    yield "event: text\n\n"
+                    
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+            print(f"✅ [AGENT STR] Done. Tools: {tool_calls}")
+            yield "event: done\ndata: {}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -282,9 +350,22 @@ async def upload_pdf(file: UploadFile = File(...)):
         logger.info(f"💾 Saved to temp: {tmp_path}")
         
         try:
-            logger.info("🔄 Processing PDF (this may take 2-5 minutes on free tier)...")
-            texts_added, images_added, tables_added = process_pdf(tmp_path, original_filename=file.filename)
+            logger.info("🔄 Processing PDF in background thread...")
+            loop = asyncio.get_event_loop()
+            
+            # Initialize progress state
+            UPLOAD_PROGRESS[file.filename] = {"status": "Starting processing...", "progress": 0}
+            
+            def update_progress(msg: str, pct: int):
+                UPLOAD_PROGRESS[file.filename] = {"status": msg, "progress": pct}
+                
+            texts_added, images_added, tables_added = await loop.run_in_executor(
+                None, lambda: process_pdf(tmp_path, original_filename=file.filename, progress_callback=update_progress)
+            )
             logger.info(f"✅ Done! Added {texts_added} texts, {images_added} images, {tables_added} tables")
+            
+            # Mark complete explicitly (just in case)
+            UPLOAD_PROGRESS[file.filename] = {"status": "Upload complete!", "progress": 100}
             
             return UploadResponse(
                 success=True,
@@ -294,11 +375,39 @@ async def upload_pdf(file: UploadFile = File(...)):
                 images_added=images_added,
                 tables_added=tables_added
             )
+        except Exception as process_err:
+            UPLOAD_PROGRESS[file.filename] = {"status": f"Error: {process_err}", "progress": 100}
+            raise process_err
         finally:
             os.unlink(tmp_path)
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/upload-progress/{filename}")
+async def upload_progress_stream(filename: str):
+    """Stream PDF processing progress over SSE"""
+    async def event_generator():
+        # Send an immediate connection confirmation
+        yield f"data: {json.dumps({'status': 'Connected context stream...', 'progress': 0})}\n\n"
+        
+        while True:
+            # Poll the global dictionary for this filename's state
+            state = UPLOAD_PROGRESS.get(filename)
+            if state:
+                yield f"data: {json.dumps(state)}\n\n"
+                
+                # Stop if it reached completion or hit an error
+                if state["progress"] >= 100 or "Error" in state["status"]:
+                    break
+            else:
+                # If the key doesn't exist yet, it's just initializing
+                yield f"data: {json.dumps({'status': 'Waiting for processor to begin...', 'progress': 0})}\n\n"
+                
+            await asyncio.sleep(0.5)
+            
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.delete("/reset")

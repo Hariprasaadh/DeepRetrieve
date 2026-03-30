@@ -1,62 +1,19 @@
 # Gemini LLM integration for RAG responses
 
 from typing import List, Dict, Optional, Any
-import time
-from threading import Lock
-import google.generativeai as genai
+from google import genai
 
-from .config import (
-    GOOGLE_API_KEY, 
-    GEMINI_MODEL,
-    RATE_LIMIT_WINDOW,
-    MAX_CALLS_PER_WINDOW,
-    MIN_DELAY_BETWEEN_CALLS,
-    MAX_RETRIES
-)
+from .config import GOOGLE_API_KEY, GEMINI_MODEL, MAX_RETRIES
 
 # Initialize Gemini immediately
 print(f"Initializing Gemini ({GEMINI_MODEL})...")
-genai.configure(api_key=GOOGLE_API_KEY)
-_gemini_model = genai.GenerativeModel(GEMINI_MODEL)
-print("✅ Gemini model ready!")
-
-# Rate limiting state
-_rate_limit_lock = Lock()
-_last_call_time = 0
-_call_count = 0
+_gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
+print("✅ Gemini client ready!")
 
 
-def get_gemini_model():
-    """Get Gemini model instance"""
-    return _gemini_model
-
-
-def _apply_rate_limit():
-    """Apply rate limiting to prevent API quota exhaustion"""
-    global _last_call_time, _call_count
-    
-    with _rate_limit_lock:
-        current_time = time.time()
-        
-        # Reset counter if window has passed
-        if current_time - _last_call_time > RATE_LIMIT_WINDOW:
-            _call_count = 0
-        
-        # Check if we've exceeded max calls
-        if _call_count >= MAX_CALLS_PER_WINDOW:
-            wait_time = RATE_LIMIT_WINDOW - (current_time - _last_call_time)
-            if wait_time > 0:
-                print(f"Rate limit reached. Waiting {wait_time:.1f}s...")
-                time.sleep(wait_time)
-                _call_count = 0
-        
-        # Ensure minimum delay between calls
-        time_since_last = current_time - _last_call_time
-        if time_since_last < MIN_DELAY_BETWEEN_CALLS and _last_call_time > 0:
-            time.sleep(MIN_DELAY_BETWEEN_CALLS - time_since_last)
-        
-        _call_count += 1
-        _last_call_time = time.time()
+def get_gemini_client():
+    """Get Gemini client instance"""
+    return _gemini_client
 
 
 def prepare_context_from_results(results: List[Dict]) -> str:
@@ -102,7 +59,7 @@ def generate_response(
     max_retries: int = MAX_RETRIES
 ) -> Dict[str, Any]:
     """Generate response using Gemini with provided context (rate-limited)"""
-    model = get_gemini_model()
+    client = get_gemini_client()
     
     if system_prompt is None:
         system_prompt = """You are an expert research assistant. Your task is to answer questions using ONLY the provided context.
@@ -132,19 +89,13 @@ USER QUESTION: {query}
 
 ANSWER:"""
     
-    # Apply rate limiting before making the call
-    _apply_rate_limit()
-    
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt
+    )
     return {
         "success": True,
         "response": response.text,
-        "query": query
-    }
-    
-    return {
-        "success": False,
-        "error": "Max retries exceeded due to rate limiting",
         "query": query
     }
 

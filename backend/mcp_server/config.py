@@ -18,22 +18,20 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 # Qdrant Configuration
 COLLECTION_NAME = "multimodal_rag"
-EMBEDDING_DIM = 3072  # gemini-embedding-2-preview default output dimension
+EMBEDDING_DIM = 768  # BAAI/bge-base-en-v1.5 output dimension
 
 
-# Gemini Configuration
+# Gemini Configuration (LLM only — embeddings are handled locally)
 GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview"
+
+# Local Embedding Model
+BGE_MODEL_NAME = "BAAI/bge-base-en-v1.5"  # ~438 MB, 768 dims
 
 # RAG Configuration
 TOP_K = 5
 RELEVANCE_THRESHOLD = 0.5  # Minimum score to consider context sufficient
 
-# Rate Limiting Configuration (to avoid API quota exhaustion)
-RATE_LIMIT_WINDOW = 60  # Time window in seconds
-MAX_CALLS_PER_WINDOW = 10  # Maximum LLM calls per window
-MIN_DELAY_BETWEEN_CALLS = 2  # Minimum seconds between consecutive calls
-MAX_RETRIES = 3  # Max retries on rate limit errors
+MAX_RETRIES = 3  # Max retries on transient errors
 
 # Output Paths
 OUTPUT_FOLDER = Path(__file__).parent.parent / "extracted_content"

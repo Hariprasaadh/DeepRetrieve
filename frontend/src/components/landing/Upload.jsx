@@ -9,6 +9,8 @@ function Upload() {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState('')
   const [uploadError, setUploadError] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
@@ -88,6 +90,29 @@ function Upload() {
     
     setUploading(true)
     setUploadError(null)
+    setUploadProgress(0)
+    setUploadStatus('Connecting to backend...')
+    
+    // Open Server-Sent Events stream for progress
+    const eventSource = new EventSource(`${API_BASE_URL}/api/v1/upload-progress/${encodeURIComponent(file.name)}`)
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.status) setUploadStatus(data.status)
+        if (data.progress !== undefined) setUploadProgress(data.progress)
+        
+        if (data.progress >= 100 || (data.status && data.status.includes('Error'))) {
+          eventSource.close()
+        }
+      } catch (err) {
+        console.error("Error parsing progress SSE", err)
+      }
+    }
+    
+    eventSource.onerror = () => {
+      eventSource.close()
+    }
     
     try {
       const formData = new FormData()
@@ -104,6 +129,7 @@ function Upload() {
       }
       
       const result = await response.json()
+      eventSource.close()
       
       // Store filename in localStorage for chat page
       localStorage.setItem('uploadedPdfName', file.name)
@@ -114,6 +140,7 @@ function Upload() {
       console.error('Upload error:', error)
       setUploadError(error.message)
       setUploading(false)
+      eventSource.close()
     }
   }
 
@@ -259,18 +286,33 @@ function Upload() {
             <button 
               onClick={handleUpload}
               disabled={isUploading || backendStatus !== 'online'}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)]"
+              className="relative w-full h-14 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] overflow-hidden"
             >
               {isUploading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
-                  Processing your document...
-                </>
+                <div className="relative z-10 w-full px-6 flex flex-col items-center justify-center h-full">
+                  <div className="flex items-center gap-2 mb-1.5 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin text-white/80" strokeWidth={2.5} />
+                    <span className="font-semibold text-white truncate max-w-[200px] sm:max-w-xs">{uploadStatus || 'Processing...'}</span>
+                    <span className="text-white/80 font-mono text-xs ml-1 bg-black/20 px-1.5 py-0.5 rounded">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-white shadow-[0_0_10px_white] transition-all duration-300 ease-out" 
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
               ) : (
-                <>
+                <div className="relative z-10 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
                   Analyze Document
-                </>
+                </div>
+              )}
+              {/* Subtle animated background while uploading */}
+              {isUploading && (
+                <div 
+                  className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full animate-[shimmer_2s_infinite]"
+                />
               )}
             </button>
           </div>

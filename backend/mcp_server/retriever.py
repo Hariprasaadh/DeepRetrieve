@@ -96,7 +96,8 @@ def search_similar(
             "source": result.payload.get("source"),
             "page": result.payload.get("page"),
             "path": result.payload.get("path"),
-            "csv_path": result.payload.get("csv_path"),
+            "json_path": result.payload.get("json_path"),
+            "headers": result.payload.get("headers"),
             "table_index": result.payload.get("table_index")
         })
     
@@ -131,7 +132,8 @@ def search_by_image(
             "image_base64": result.payload.get("image_base64"),
             "source": result.payload.get("source"),
             "page": result.payload.get("page"),
-            "csv_path": result.payload.get("csv_path"),
+            "json_path": result.payload.get("json_path"),
+            "headers": result.payload.get("headers"),
             "table_index": result.payload.get("table_index")
         })
     
