@@ -1,4 +1,8 @@
+// Purpose: Hero marketing call-to-action landing segment.
+// Responsibilities: Renders main product slogans, interactive CTA link triggers, and animated 3D floats demonstrating visual parsing.
+
 import { ArrowRight, Sparkles, FileText, Image, Table2, ChevronRight } from 'lucide-react'
+
 import { Link } from 'react-router-dom'
 
 function Hero() {

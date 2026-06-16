@@ -1,4 +1,8 @@
+// Purpose: Footer branding and links navigation component.
+// Responsibilities: Renders copyright notices, product/company link columns, and links to external social media profiles.
+
 import { Layers, Linkedin, Github } from 'lucide-react'
+
 
 function Footer() {
   return (

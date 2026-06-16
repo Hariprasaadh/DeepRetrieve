@@ -1,6 +1,3 @@
-# DeepRetrieve MCP Server
-# Exposes RAG retriever and web search as MCP tools
-
 from .server import mcp as mcp_app, run_server
 from .retriever import search_similar, get_collection_info, create_collection
 from .web_search import web_search, format_web_results_as_context

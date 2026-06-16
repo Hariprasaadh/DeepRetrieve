@@ -1,10 +1,13 @@
-# DeepRetrieve Backend Entry Point
+# Purpose: Entrypoint script for starting the backend API and MCP services.
+# Responsibilities: Configures execution pathways to launch either the FastAPI application 
+# server (with auto-reload) or the FastMCP server wrapper.
 
 import uvicorn
 
 
+
 def run_api():
-    """Run the FastAPI server locally"""
+    """Starts the FastAPI application server with auto-reload for local development."""
     print("🔧 Local Mode - DeepRetrieve API at http://localhost:8000")
     
     uvicorn.run(
@@ -16,7 +19,7 @@ def run_api():
 
 
 def run_mcp():
-    """Run the MCP server"""
+    """Starts the FastMCP server, exposing RAG tools to compliant MCP clients."""
     from mcp_server.server import run_server
     print("🔌 Starting DeepRetrieve MCP Server")
     run_server()
@@ -28,3 +31,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

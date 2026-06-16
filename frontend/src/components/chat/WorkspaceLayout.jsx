@@ -1,4 +1,9 @@
+// Purpose: Dual-pane dashboard workspace layout.
+// Responsibilities: Allocates and splits screen space between primary chat stream and secondary reference sources, 
+// managing collapse animations for clean responsive scaling.
+
 import { useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 
@@ -7,8 +12,6 @@ function WorkspaceLayout({ chatPanel, sourcesPanel }) {
 
   return (
     <div className="flex h-screen w-full bg-[#050505] overflow-hidden text-slate-300 relative">
-
-      {/* Center Panel: Chat Interface */}
       <motion.div
         layout
         className="flex-1 flex flex-col bg-[#050505] relative z-10 min-w-0"
@@ -16,7 +19,6 @@ function WorkspaceLayout({ chatPanel, sourcesPanel }) {
         {chatPanel}
       </motion.div>
 
-      {/* Collapsed Right Trigger - Hidden on mobile */}
       <AnimatePresence>
         {!rightOpen && (
           <motion.div
@@ -36,7 +38,6 @@ function WorkspaceLayout({ chatPanel, sourcesPanel }) {
         )}
       </AnimatePresence>
 
-      {/* Right Panel: Sources - Hidden on mobile, 35% on tablet, 25% on desktop */}
       <AnimatePresence initial={false} mode="popLayout">
         {rightOpen && (
           <motion.div
@@ -46,7 +47,6 @@ function WorkspaceLayout({ chatPanel, sourcesPanel }) {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="hidden md:flex bg-[#0a0a12]/30 backdrop-blur-sm flex-col relative shrink-0 ml-1 md:w-[35%] lg:w-[25%]"
           >
-            {/* Collapse Trigger (Inside panel) */}
             <button
               onClick={() => setRightOpen(false)}
               className="absolute top-1/2 -left-6 translate-x-3 z-50 w-6 h-12 bg-[#1a1a23] rounded-l-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-indigo-500/20 transition-all cursor-pointer shadow-xl border border-white/5"

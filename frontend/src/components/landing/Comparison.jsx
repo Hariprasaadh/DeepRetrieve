@@ -1,4 +1,8 @@
+// Purpose: Feature comparison matrix component.
+// Responsibilities: Displays structured capabilities and stats contrasting DeepRetrieve with basic RAG pipelines.
+
 import { Check, X, Zap, Database, Image, Table2, Brain, Search, Sparkles } from 'lucide-react'
+
 
 function Comparison() {
   const features = [

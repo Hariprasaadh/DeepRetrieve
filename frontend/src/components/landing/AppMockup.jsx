@@ -1,4 +1,9 @@
+// Purpose: Interactive/animated dashboard mockup showcase component.
+// Responsibilities: Simulates the chat dashboard view (side library list, parsed PDF mockup page, and RAG query response cards) 
+// for user demonstration on the landing page.
+
 import { Plus, FileText, Image, UploadCloud, Share, MoreHorizontal, Sparkles, PlusCircle, ArrowUp } from 'lucide-react'
+
 
 function AppMockup() {
   return (

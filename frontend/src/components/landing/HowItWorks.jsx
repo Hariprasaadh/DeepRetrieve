@@ -1,4 +1,9 @@
+// Purpose: Process sequence guide layout component.
+// Responsibilities: Outlines step-by-step instructions (uploading files, indexing schemas, user chat querying) 
+// using styled badges, descriptive texts, and animated card mockups.
+
 import { Upload, Brain, MessageSquare, ArrowRight } from 'lucide-react'
+
 
 function HowItWorks() {
   const steps = [

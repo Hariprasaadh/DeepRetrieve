@@ -1,4 +1,9 @@
+// Purpose: Slide-based key features presentation component.
+// Responsibilities: Loops through core AI features (reasoning, indexing, explainability) 
+// using automated and manual tab controls with interactive layouts.
+
 import { useState, useEffect } from 'react'
+
 import { Brain, CheckCircle, Layers, Workflow } from 'lucide-react'
 
 function Features() {
@@ -6,7 +11,6 @@ function Features() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
 
   const featureGroups = [
-    // Slide 1
     [
       {
         icon: Brain,
@@ -30,7 +34,6 @@ function Features() {
         gradient: 'from-purple-500/20 to-pink-500/20'
       }
     ],
-    // Slide 2 - MCP Features
     [
       {
         icon: Workflow,
@@ -54,7 +57,6 @@ function Features() {
         gradient: 'from-purple-500/20 to-indigo-500/20'
       }
     ],
-    // Slide 3
     [
       {
         icon: CheckCircle,
@@ -80,25 +82,25 @@ function Features() {
     ]
   ]
 
-  // Auto-slide effect
+  // Automatically cycles feature slides at a fixed interval
   useEffect(() => {
     if (!isAutoPlaying) return
 
     const interval = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % featureGroups.length)
-    }, 5000) // Change slide every 5 seconds
+    }, 5000)
 
     return () => clearInterval(interval)
   }, [isAutoPlaying, featureGroups.length])
 
-  // Pause auto-play on hover
+  // Pause carousel progression on user hover
   const handleMouseEnter = () => setIsAutoPlaying(false)
   const handleMouseLeave = () => setIsAutoPlaying(true)
 
+  // Manual slide override; resumes auto-rotation after inactivity timeout
   const handleDotClick = (index) => {
     setActiveSlide(index)
     setIsAutoPlaying(false)
-    // Resume auto-play after 10 seconds of inactivity
     setTimeout(() => setIsAutoPlaying(true), 10000)
   }
 
@@ -124,14 +126,12 @@ function Features() {
 
   return (
     <section id="features" className="pt-32 pb-32 relative overflow-hidden">
-      {/* Background Effects */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/5 rounded-full blur-3xl"></div>
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
         <div className="text-center mb-10 sm:mb-16">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-xs sm:text-sm font-medium text-indigo-300 mb-4 sm:mb-6">
             <span className="flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
@@ -145,7 +145,6 @@ function Features() {
           </p>
         </div>
 
-        {/* Feature Cards */}
         <div 
           className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-500"
           onMouseEnter={handleMouseEnter}
@@ -160,21 +159,17 @@ function Features() {
                 className={`group relative p-5 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:border-white/20 transition-all duration-500 animate-fadeIn`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                {/* Decorative Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
                   <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
                   <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
                 </div>
 
-                {/* Icon with Glow */}
                 <div className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl ${colors.iconBg} border flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300 ${colors.glow}`}>
                   <Icon className={`w-5 h-5 sm:w-7 sm:h-7 ${colors.iconColor}`} strokeWidth={1.5} />
-                  {/* Glow effect */}
                   <div className={`absolute inset-0 rounded-lg sm:rounded-xl ${colors.iconBg} blur-xl opacity-50 group-hover:opacity-100 transition-opacity`}></div>
                 </div>
 
-                {/* Mockup Bar */}
                 <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 p-2.5 sm:p-3 rounded-lg bg-black/20 border border-white/5">
                   <div className={`w-6 h-6 rounded ${colors.iconBg} flex items-center justify-center`}>
                     <Icon className={`w-3 h-3 ${colors.iconColor}`} strokeWidth={2} />
@@ -185,7 +180,6 @@ function Features() {
                   </div>
                 </div>
 
-                {/* Content */}
                 <h3 className="text-lg sm:text-xl text-white font-medium mb-2 sm:mb-3 tracking-tight">{feature.title}</h3>
                 <p className="text-sm sm:text-base text-slate-400 leading-relaxed">{feature.description}</p>
               </div>
@@ -193,7 +187,6 @@ function Features() {
           })}
         </div>
 
-        {/* Interactive Carousel Dots */}
         <div className="flex justify-center items-center gap-3 mt-12">
           {featureGroups.map((_, index) => (
             <button
@@ -209,7 +202,6 @@ function Features() {
           ))}
         </div>
 
-        {/* Slide Labels */}
         <div className="flex justify-center mt-4">
           <span className="text-sm text-slate-500">
             {activeSlide === 0 && 'Core Features'}

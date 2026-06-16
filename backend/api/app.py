@@ -1,6 +1,9 @@
-# DeepRetrieve FastAPI Application
+# Purpose: FastAPI application config and lifespan configuration.
+# Responsibilities: Instantiates the FastAPI application, configures CORS middleware, 
+# registers API routes, and runs bootstrap logic (verifying Qdrant connection and schemas).
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,10 +12,10 @@ from .routes import router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Manages system bootstrap tasks including verifying vector DB connection and creating index schemas."""
     print("🚀 Starting DeepRetrieve API (Local Mode)...")
     print("📦 Initializing services...")
     
-    # Initialize Qdrant connection
     from mcp_server.retriever import get_qdrant_client, create_collection, COLLECTION_NAME
     client = get_qdrant_client()
     create_collection(COLLECTION_NAME)

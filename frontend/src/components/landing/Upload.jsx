@@ -1,3 +1,8 @@
+// Purpose: Ingestion file uploader panel.
+// Responsibilities: Handles document drag-and-drop actions, validates file formats,
+// monitors backend health state via status polling, posts files to the upload API,
+// and subscribes to SSE upload progress feedback.
+
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UploadCloud, FileText, X, Loader2, Sparkles, CheckCircle2, WifiOff, Wifi } from 'lucide-react'
@@ -14,7 +19,7 @@ function Upload() {
   const [uploadError, setUploadError] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
-  // Ref so interval callbacks always see the live uploading state (avoids stale closure)
+  // Ref keeps the connection loop updated on current uploading state to prevent stale closures
   const isUploadingRef = useRef(false)
 
   const setUploading = (val) => {
@@ -22,15 +27,14 @@ function Upload() {
     setIsUploading(val)
   }
   
-  // Check backend status on mount and periodically
   useEffect(() => {
     checkBackendStatus()
-    const interval = setInterval(checkBackendStatus, 10000) // Check every 10 seconds
+    const interval = setInterval(checkBackendStatus, 10000)
     return () => clearInterval(interval)
   }, [])
   
   const checkBackendStatus = async () => {
-    // Don't run health check while upload is in progress — backend may be busy
+    // Avoid hitting the health endpoint while actively processing files
     if (isUploadingRef.current) return
     try {
       const controller = new AbortController()
@@ -93,7 +97,7 @@ function Upload() {
     setUploadProgress(0)
     setUploadStatus('Connecting to backend...')
     
-    // Open Server-Sent Events stream for progress
+    // Subscribe to backend status notifications via Server-Sent Events
     const eventSource = new EventSource(`${API_BASE_URL}/api/v1/upload-progress/${encodeURIComponent(file.name)}`)
     
     eventSource.onmessage = (event) => {
@@ -128,13 +132,10 @@ function Upload() {
         throw new Error(error.detail || 'Upload failed')
       }
       
-      const result = await response.json()
+      await response.json()
       eventSource.close()
       
-      // Store filename in localStorage for chat page
       localStorage.setItem('uploadedPdfName', file.name)
-      
-      // Redirect to chat page
       navigate('/chat')
     } catch (error) {
       console.error('Upload error:', error)
@@ -156,12 +157,10 @@ function Upload() {
 
   return (
     <section id="upload" className="pt-8 pb-32 relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl"></div>
 
       <div className="max-w-4xl mx-auto px-6 text-center relative">
-        {/* Header with badge */}
         <div className="mb-8 sm:mb-12">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 sm:mb-6">
             <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-400" />
@@ -170,7 +169,6 @@ function Upload() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium text-white tracking-tight mb-4 sm:mb-5">Start by dropping a file</h2>
           <p className="text-base sm:text-lg text-slate-500 mb-6">No setup required. Just drag and drop.</p>
           
-          {/* Backend Status Indicator */}
           <div className="flex justify-center">
             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all ${
               backendStatus === 'online' 
@@ -224,22 +222,18 @@ function Upload() {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
             
-            {/* Background gradient effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
-            {/* Animated border glow */}
             <div className={`absolute inset-0 rounded-3xl transition-opacity duration-300 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 blur-xl"></div>
             </div>
             
             <div className="relative z-10 flex flex-col items-center pointer-events-none">
-              {/* Upload icon with glow */}
               <div className={`w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)] flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300 ${isDragging ? 'scale-110' : ''}`}>
                 <UploadCloud className={`w-7 h-7 sm:w-10 sm:h-10 text-indigo-400 transition-transform ${isDragging ? 'scale-110' : ''}`} strokeWidth={1.5} />
               </div>
               <span className="text-white font-medium text-base sm:text-lg mb-2">Click to upload or drag and drop</span>
               
-              {/* Feature pills */}
               <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {features.map((feature, i) => (
                   <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/5">
@@ -276,7 +270,7 @@ function Upload() {
               </div>
             )}
             
-    {backendStatus === 'offline' && !isUploading && (
+            {backendStatus === 'offline' && !isUploading && (
               <div className="mb-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm flex items-center gap-2">
                 <WifiOff className="w-4 h-4" />
                 <span>Backend is offline. Please start the backend server first.</span>
@@ -308,7 +302,6 @@ function Upload() {
                   Analyze Document
                 </div>
               )}
-              {/* Subtle animated background while uploading */}
               {isUploading && (
                 <div 
                   className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full animate-[shimmer_2s_infinite]"

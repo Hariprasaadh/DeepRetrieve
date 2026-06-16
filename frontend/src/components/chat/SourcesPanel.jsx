@@ -1,3 +1,7 @@
+// Purpose: Attributed context citation and source tracking list panel.
+// Responsibilities: Displays relevant retrieved source cards (text, images, tables, web links),
+// ranks them with confidence scores, and mounts image extraction overlays inside interactive overlays.
+
 import { useState } from 'react';
 import { FileText, Table2, Image as ImageIcon, Globe, ChevronDown, Copy, Check, X, Expand } from 'lucide-react';
 
@@ -14,27 +18,24 @@ const CONFIDENCE = {
     low:    { label: 'Low',    color: 'text-orange-400 bg-orange-500/10' },
 };
 
-/** Humanize source name — strip .pdf, detect temp patterns */
+// Strips extensions and humanizes temporary or workspace file names into title case
 function humanizeName(source, type) {
     if (!source) return 'Document';
     if (type === 'web') {
         try { return new URL(source).hostname; } catch { return source; }
     }
     const base = source.replace(/\.pdf$/i, '');
-    // Looks like a temp file: starts with "tmp" followed by random alphanum
     if (/^tmp[a-z0-9_]{4,}$/i.test(base)) return 'Uploaded Document';
-    // Capitalize first letter and replace underscores/hyphens with spaces
     return base.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-/** Cleaned content for display */
+// Sanitizes and truncates raw visual/tabular data for preview rendering
 function formatContent(content, type) {
     if (!content) return '';
     if (type === 'table') {
         const rows = content.split('\n').filter(r => r.trim());
         return rows.slice(0, 4).map(r => r.trim()).join('\n') || content;
     }
-    // Strip old generic fallback text
     if (/^Image from (page \d+ of )?tmp[a-z0-9_]+\.pdf/i.test(content.trim())) {
         return 'Visual content — no caption available for this item.';
     }
@@ -104,19 +105,15 @@ function SourceCard({ source, index, onOpenImage }) {
                     : 'bg-[#13131f]/50 border-white/5 hover:bg-[#13131f] hover:border-indigo-500/20'
                 }`}
         >
-            {/* Top row: index badge + type icon + chevron */}
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                    {/* Index circle */}
                     <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-300 text-[10px] font-bold flex items-center justify-center">
                         {index + 1}
                     </span>
                     <div className="min-w-0">
-                        {/* Name */}
                         <p className="text-xs font-semibold text-slate-200 truncate" title={source.source}>
                             {name}
                         </p>
-                        {/* Meta row */}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             {source.page && (
                                 <span className="text-[10px] text-slate-500 font-medium">p.{source.page}</span>
@@ -160,14 +157,12 @@ function SourceCard({ source, index, onOpenImage }) {
                 </div>
             </div>
 
-            {/* Collapsed preview */}
             {!expanded && (
                 <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
                     {content}
                 </p>
             )}
 
-            {/* Expanded full content */}
             {expanded && (
                 <div className="mt-3 pt-3 border-t border-white/5" onClick={e => e.stopPropagation()}>
                     <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
@@ -193,13 +188,11 @@ function SourcesPanel({ sources = [] }) {
     return (
         <>
         <div className="flex flex-col h-full bg-[#0a0a12] border-l border-white/5">
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
                 <h3 className="text-sm font-semibold text-slate-200">Retrieval Sources</h3>
                 <span className="text-xs text-slate-500">{sources.length} Found</span>
             </div>
 
-            {/* Sources List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
                 {sources.length > 0 ? (
                     sources.map((source, idx) => (

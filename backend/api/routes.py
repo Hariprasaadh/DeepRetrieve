@@ -319,7 +319,15 @@ Question: {request.query}"""
                 metadata_sent = False
                 
                 for chunk in stream_response:
-                    if chunk.text:
+                    # Check if the chunk contains actual text parts to avoid SDK function_call warnings
+                    has_text = False
+                    if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
+                        for part in chunk.candidates[0].content.parts:
+                            if part.text:
+                                has_text = True
+                                break
+                                
+                    if has_text:
                         if not metadata_sent:
                             # Send metadata just before the first text chunk
                             meta_payload = json.dumps({"sources": sources, "used_web_search": used_web})

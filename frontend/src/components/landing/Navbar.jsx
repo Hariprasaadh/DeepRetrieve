@@ -1,4 +1,8 @@
+// Purpose: Header navigation bar component.
+// Responsibilities: Renders brand indicators, navigation links, login/signup shortcuts, and a collapsable mobile hamburger menu.
+
 import { useState } from 'react'
+
 import { Layers, Menu, X } from 'lucide-react'
 
 function Navbar() {

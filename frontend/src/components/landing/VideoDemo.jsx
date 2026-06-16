@@ -1,4 +1,9 @@
+// Purpose: Interactive product video player component.
+// Responsibilities: Renders the media player for DeepRetrieve demos, providing custom volume toggles, 
+// fullscreen options, seek bar interactions, and custom play overlay controls.
+
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react'
+
 import { useState, useRef } from 'react'
 
 function VideoDemo() {

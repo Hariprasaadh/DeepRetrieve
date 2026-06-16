@@ -1,3 +1,8 @@
+// Purpose: Conversational chat interface panel.
+// Responsibilities: Renders user/assistant chat history, manages message state, 
+// establishes streaming connections with the backend SSE endpoint, and propagates 
+// retrieval sources metadata back to the layout controller.
+
 import { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Paperclip, Sparkles, Plus, ArrowUp, RotateCcw, Globe, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,7 +23,6 @@ function ChatPanel({ onSourcesUpdate }) {
     const [isTyping, setIsTyping] = useState(false);
     const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
     const [uploadedPdf, setUploadedPdf] = useState(null);
-    // Flat conversation history sent to backend for memory
     const [conversationHistory, setConversationHistory] = useState([]);
     const bottomRef = useRef(null);
     const loadingTimerRef = useRef(null);
@@ -28,12 +32,11 @@ function ChatPanel({ onSourcesUpdate }) {
         if (pdfName) setUploadedPdf(pdfName);
     }, []);
 
-    // Auto-scroll to latest message
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
 
-    // Cycle loading phrases while waiting
+    // Periodically rotates processing status phrases while waiting for backend SSE updates
     useEffect(() => {
         if (isTyping) {
             let i = 0;
@@ -65,8 +68,6 @@ function ChatPanel({ onSourcesUpdate }) {
         setIsTyping(true);
 
         const historySnapshot = conversationHistory;
-
-        // Create an empty AI message placeholder that we will update as stream chunks arrive
         const aiMsgId = Date.now() + 1;
         setMessages(prev => [...prev, {
             id: aiMsgId,
@@ -98,6 +99,7 @@ function ChatPanel({ onSourcesUpdate }) {
             let fullText = "";
             let currentEvent = null;
 
+            // Consume SSE stream: reads metadata block first, then chunks body updates
             while (!done) {
                 const { value, done: readerDone } = await reader.read();
                 done = readerDone;
@@ -116,7 +118,6 @@ function ChatPanel({ onSourcesUpdate }) {
                                 const data = JSON.parse(dataStr);
                                 
                                 if (currentEvent === 'metadata') {
-                                    // Received sources before text generation
                                     setMessages(prev => prev.map(msg => 
                                         msg.id === aiMsgId 
                                             ? { ...msg, sources: data.sources || [], usedWeb: data.used_web_search || false } 
@@ -128,7 +129,6 @@ function ChatPanel({ onSourcesUpdate }) {
                                 } else if (currentEvent === 'error') {
                                     throw new Error(data.error);
                                 } else {
-                                    // Regular text chunk
                                     if (data.text) {
                                         fullText += data.text;
                                         setMessages(prev => prev.map(msg => 
@@ -144,7 +144,6 @@ function ChatPanel({ onSourcesUpdate }) {
                 }
             }
 
-            // Append both turns to memory once complete
             setConversationHistory(prev => [
                 ...prev,
                 { role: 'user',      content: userMessage },
@@ -162,7 +161,6 @@ function ChatPanel({ onSourcesUpdate }) {
         }
     };
 
-
     const handleNewConversation = () => {
         setMessages([]);
         setConversationHistory([]);
@@ -171,11 +169,7 @@ function ChatPanel({ onSourcesUpdate }) {
 
     return (
         <div className="flex flex-col h-full relative font-sans">
-
-            {/* Scrollable Message Area */}
             <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-10 py-4 sm:py-6 space-y-6 sm:space-y-8 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
-
-                {/* Hero / Empty State */}
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center -mt-10 sm:-mt-20 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] px-4">
                         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3 tracking-tight text-center">
@@ -203,7 +197,6 @@ function ChatPanel({ onSourcesUpdate }) {
                     </div>
                 )}
 
-                {/* New Conversation button — only visible once chat has started */}
                 {messages.length > 0 && (
                     <div className="flex justify-center pt-1">
                         <button
@@ -215,7 +208,6 @@ function ChatPanel({ onSourcesUpdate }) {
                     </div>
                 )}
 
-                {/* Message List */}
                 <AnimatePresence>
                     {messages.map((msg) => (
                         <motion.div
@@ -224,14 +216,12 @@ function ChatPanel({ onSourcesUpdate }) {
                             key={msg.id}
                             className={`flex gap-3 sm:gap-5 max-w-3xl mx-auto ${msg.role === 'user' ? 'justify-end' : ''}`}
                         >
-                            {/* AI Avatar */}
                             {msg.role === 'ai' && (
                                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 flex items-center justify-center mt-1">
                                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </div>
                             )}
 
-                            {/* Content */}
                             <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-[90%] sm:max-w-[85%]`}>
                                 <div
                                     className={`text-sm sm:text-[15px] leading-6 sm:leading-7 ${msg.role === 'user'
@@ -263,7 +253,6 @@ function ChatPanel({ onSourcesUpdate }) {
                                 </div>
                             </div>
 
-                            {/* User Avatar */}
                             {msg.role === 'user' && (
                                 <div className="w-8 h-8 rounded-full bg-slate-700/50 flex flex-col items-center justify-center mt-1 text-xs font-medium text-slate-300">
                                     Me
@@ -272,7 +261,6 @@ function ChatPanel({ onSourcesUpdate }) {
                         </motion.div>
                     ))}
 
-                    {/* Loading indicator with cycling phrase */}
                     {isTyping && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-5 max-w-3xl mx-auto">
                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 flex items-center justify-center">
@@ -288,17 +276,14 @@ function ChatPanel({ onSourcesUpdate }) {
                     )}
                 </AnimatePresence>
 
-                {/* Scroll anchor */}
                 <div ref={bottomRef} />
             </div>
 
-            {/* Floating Input Area */}
             <div className="p-3 sm:p-6 pt-0 bg-transparent relative z-20 flex justify-center">
                 <div className="w-full max-w-3xl relative">
                     <div className="absolute -inset-1 bg-linear-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20 rounded-xl sm:rounded-2xl opacity-0 focus-within:opacity-100 transition-opacity duration-500 blur-lg"></div>
 
                     <form onSubmit={handleSend} className="relative bg-[#0e0e16]/80 backdrop-blur-2xl border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl flex items-end p-1.5 sm:p-2 transition-all ring-1 ring-white/0 focus-within:ring-white/5">
-
                         <button type="button" className="p-2 sm:p-3 text-slate-400 hover:text-white transition-colors hover:bg-white/5 rounded-lg sm:rounded-xl self-end mb-0.5">
                             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>

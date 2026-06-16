@@ -1,23 +1,25 @@
-# Gemini LLM integration for RAG responses
+# Purpose: Google Gemini LLM API client initialization and prompt formatting.
+# Responsibilities: Initializes the GenAI SDK client, compiles retrieval results into LLM context prompts,
+# generates model responses, and executes keyword-overlap heuristics to validate vector search quality.
 
 from typing import List, Dict, Optional, Any
 from google import genai
 
 from .config import GOOGLE_API_KEY, GEMINI_MODEL, MAX_RETRIES
 
-# Initialize Gemini immediately
+# Initialize Gemini API client on module load
 print(f"Initializing Gemini ({GEMINI_MODEL})...")
 _gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
 print("✅ Gemini client ready!")
 
 
 def get_gemini_client():
-    """Get Gemini client instance"""
+    """Returns the singleton Gemini client instance."""
     return _gemini_client
 
 
 def prepare_context_from_results(results: List[Dict]) -> str:
-    """Prepare clean context string from search results"""
+    """Formats retrieval results into structured textual blocks to serve as LLM prompt context."""
     if not results:
         return ""
     
@@ -32,7 +34,6 @@ def prepare_context_from_results(results: List[Dict]) -> str:
         if not content:
             continue
         
-        # Clean up content - remove excessive whitespace
         content = " ".join(content.split())
         
         if result_type == "text":
@@ -58,7 +59,7 @@ def generate_response(
     system_prompt: Optional[str] = None,
     max_retries: int = MAX_RETRIES
 ) -> Dict[str, Any]:
-    """Generate response using Gemini with provided context (rate-limited)"""
+    """Queries Gemini 2.5 Flash using a prompt enriched with the retrieved context blocks."""
     client = get_gemini_client()
     
     if system_prompt is None:
@@ -100,38 +101,37 @@ ANSWER:"""
     }
 
 
-
 def check_context_relevance(
     query: str,
     results: List[Dict],
     threshold: float = 0.5
 ) -> bool:
-    """Check if the search results are relevant enough for the query"""
+    """Validates the relevance of retrieved vector chunks against the user query.
+
+    Heuristics:
+    1. Score matching: Rejects context if no item meets the similarity threshold.
+    2. Quality verification: Detects parsing errors like stray ML tags or excessive newlines.
+    3. Keyword check: Resolves specific queries by ensuring lexical overlap on non-stopword tokens.
+    """
     if not results:
         return False
     
-    # Must have at least one result above threshold
     has_good_score = any(r.get("score", 0) >= threshold for r in results)
     if not has_good_score:
         return False
     
-    # Check content quality - reject junk content
     for result in results:
         content = result.get("content", "")
-        # Check for corrupted content (repeated tokens, too many newlines)
         if "<EOS>" in content or "<pad>" in content:
             return False
-        # Check if content is mostly newlines (corrupted)
         if content.count('\n') > len(content.split()) * 0.5:
             return False
     
-    # Generic document queries - trust the vector score
     query_lower = query.lower()
     generic_queries = ['document', 'pdf', 'file', 'paper', 'content', 'summary', 'summarize', 'overview']
     if any(g in query_lower for g in generic_queries):
         return has_good_score
     
-    # For specific queries, check keyword overlap
     query_words = set(query.lower().split())
     stopwords = {'what', 'is', 'the', 'a', 'an', 'how', 'why', 'when', 'where', 'who', 'about', 
                  'explain', 'tell', 'me', 'can', 'you', 'do', 'does', 'did', 'will', 'would', 
@@ -139,11 +139,9 @@ def check_context_relevance(
                  'but', 'this', 'that', 'these', 'those', 'it', 'its', 'my', 'your'}
     query_keywords = query_words - stopwords
     
-    # If no specific keywords, trust vector score
     if not query_keywords:
         return has_good_score
     
-    # Check if any keyword appears in any result
     for result in results:
         content = result.get("content", "").lower()
         for keyword in query_keywords:

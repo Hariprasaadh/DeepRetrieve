@@ -1,4 +1,9 @@
+// Purpose: Ambient canvas particle effect renderer.
+// Responsibilities: Runs a lightweight particle simulation loop inside an HTML5 canvas element, 
+// managing canvas resizing, interactive mouse tracking, and low-overhead frame rendering.
+
 import { useEffect, useRef } from 'react'
+
 
 function ParticleBackground() {
   const canvasRef = useRef(null)
@@ -9,7 +14,7 @@ function ParticleBackground() {
     let animationFrameId
     let stars = []
     let lastTime = 0
-    const FPS_LIMIT = 30 // Limit to 30fps for performance
+    const FPS_LIMIT = 30 // Target refresh rate to balance visual smoothness and GPU load
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth
@@ -18,7 +23,7 @@ function ParticleBackground() {
 
     const createStars = () => {
       stars = []
-      // Reduced star count for performance (max 150 stars)
+      // Dynamically scale particle count based on screen real estate up to a safety ceiling
       const numStars = Math.min(150, Math.floor((canvas.width * canvas.height) / 8000))
       
       for (let i = 0; i < numStars; i++) {
@@ -37,7 +42,7 @@ function ParticleBackground() {
 
     let time = 0
     const drawFrame = (timestamp) => {
-      // Limit FPS for performance
+      // Throttle canvas frame updates to stay within target FPS budget
       if (timestamp - lastTime < 1000 / FPS_LIMIT) {
         animationFrameId = requestAnimationFrame(drawFrame)
         return
@@ -47,7 +52,6 @@ function ParticleBackground() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       time += 0.033
 
-      // Draw stars (simplified - no gradients)
       stars.forEach(star => {
         const twinkle = Math.sin(time * star.twinkleSpeed * 60 + star.twinkleOffset)
         const opacity = star.baseOpacity * (0.6 + twinkle * 0.4)
@@ -57,7 +61,6 @@ function ParticleBackground() {
         ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`
         ctx.fill()
 
-        // Simple glow for bright stars only (10% of stars)
         if (star.isBright) {
           ctx.beginPath()
           ctx.arc(star.x, star.y, star.size * 2, 0, Math.PI * 2)
@@ -73,7 +76,6 @@ function ParticleBackground() {
     createStars()
     animationFrameId = requestAnimationFrame(drawFrame)
 
-    // Debounced resize handler
     let resizeTimeout
     const handleResize = () => {
       clearTimeout(resizeTimeout)

@@ -1,4 +1,9 @@
+// Purpose: Primary landing/onboarding page component.
+// Responsibilities: Arranges features sections, visual demos, performance matrices, 
+// interactive canvas backgrounds, and the initial PDF ingestion uploader.
+
 import { Navbar, Hero, AppMockup, Features, HowItWorks, Comparison, VideoDemo, Upload, Footer, ParticleBackground } from '../components/landing'
+
 
 function LandingPage() {
   return (

@@ -1,5 +1,8 @@
-# Qdrant vector database operations
+# Purpose: Qdrant Vector Database connection management and indexing interfaces.
+# Responsibilities: Initializes the Qdrant Cloud client, registers collections configured
+# with Binary Quantization indices, and handles vector similarity lookups.
 
+import time
 from typing import List, Dict, Optional
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, BinaryQuantization, BinaryQuantizationConfig
@@ -7,11 +10,10 @@ from qdrant_client.http.models import Distance, VectorParams, PointStruct, Binar
 from .config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_DIM
 from .embeddings import embed_text, embed_query, embed_image
 
-# Connect to Qdrant immediately
 print(f"Connecting to Qdrant Cloud at {QDRANT_URL}...")
-import time
 start = time.time()
 
+# Establish Qdrant database connection on module import
 _qdrant_client = QdrantClient(
     url=QDRANT_URL,
     api_key=QDRANT_API_KEY,
@@ -19,7 +21,7 @@ _qdrant_client = QdrantClient(
     prefer_grpc=False,
 )
 
-# Test connection
+# Verify link viability
 _qdrant_client.get_collections()
 
 elapsed = time.time() - start
@@ -27,12 +29,16 @@ print(f"✅ Qdrant Cloud connected! ({elapsed:.2f}s)")
 
 
 def get_qdrant_client() -> QdrantClient:
-    """Get Qdrant client instance"""
+    """Returns the shared Qdrant client instance."""
     return _qdrant_client
 
 
 def create_collection(collection_name: str = COLLECTION_NAME, recreate: bool = False):
-    """Create a Qdrant collection with Binary Quantization"""
+    """Initializes the target collection in Qdrant with cosine distance metric and on-disk payload storage.
+
+    Uses Binary Quantization (BQ) configured to cache vectors in RAM for faster index queries,
+    mitigating network retrieval latencies.
+    """
     client = get_qdrant_client()
     
     if recreate and client.collection_exists(collection_name=collection_name):
@@ -64,20 +70,19 @@ def search_similar(
     collection_name: str = COLLECTION_NAME,
     content_type: Optional[str] = None
 ) -> List[Dict]:
-    """Search for similar content in Qdrant"""
+    """Queries Qdrant for items matching the semantic embedding of the query string.
+
+    Supports categorical filtering (e.g. text, image, table) through payload matching.
+    """
     client = get_qdrant_client()
-    
-    # Embed the query
     query_embedding = embed_query(query)
     
-    # Build filter if content type specified
     query_filter = None
     if content_type:
         query_filter = models.Filter(
             must=[models.FieldCondition(key="type", match=models.MatchValue(value=content_type))]
         )
     
-    # Search using query_points (new API)
     results = client.query_points(
         collection_name=collection_name,
         query=query_embedding,
@@ -85,7 +90,6 @@ def search_similar(
         query_filter=query_filter
     )
     
-    # Format results
     formatted_results = []
     for result in results.points:
         formatted_results.append({
@@ -109,20 +113,16 @@ def search_by_image(
     top_k: int = 5,
     collection_name: str = COLLECTION_NAME
 ) -> List[Dict]:
-    """Search using an image as query"""
+    """Retrieves payload objects utilizing an image embedding as the query vector."""
     client = get_qdrant_client()
-    
-    # Embed the image
     query_embedding = embed_image(image_input)
     
-    # Search using query_points (new API)
     results = client.query_points(
         collection_name=collection_name,
         query=query_embedding,
         limit=top_k
     )
     
-    # Format results
     formatted_results = []
     for result in results.points:
         formatted_results.append({
@@ -141,7 +141,7 @@ def search_by_image(
 
 
 def get_collection_info(collection_name: str = COLLECTION_NAME) -> Dict:
-    """Get information about the collection"""
+    """Fetches diagnostic statistics and record counts for the target Qdrant collection."""
     client = get_qdrant_client()
     
     if not client.collection_exists(collection_name):

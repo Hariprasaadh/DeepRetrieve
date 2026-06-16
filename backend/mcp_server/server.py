@@ -1,5 +1,6 @@
-# DeepRetrieve MCP Server
-# Exposes RAG retriever and web search as MCP tools
+# Purpose: FastMCP tool definition and server entrypoint.
+# Responsibilities: Exposes RAG retrieval, fallback web search, and hybrid retrieval tools
+# to Model Context Protocol clients for agent orchestration.
 
 from typing import Optional, Dict, Any
 from fastmcp import FastMCP
@@ -10,7 +11,7 @@ from .web_search import web_search, format_web_results_as_context
 from .llm import prepare_context_from_results, generate_response, check_context_relevance
 
 
-# Initialize FastMCP server
+# FastMCP instance defining agent tools
 mcp = FastMCP(
     name="deepretrieve",
     instructions="""
@@ -34,33 +35,17 @@ def rag_retrieve(
     top_k: int = TOP_K,
     content_type: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    Search the multimodal RAG vector database for relevant content.
-    
-    Args:
-        query: The search query (natural language question)
-        top_k: Number of results to return (default: 5)
-        content_type: Filter by type - "text", "image", or "table" (optional)
-    
-    Returns:
-        Dictionary with search results, relevance info, and formatted context
-    """
+    """Queries the local vector database for document chunks matching the query string."""
     print(f"🔍 [TOOL CALL] rag_retrieve | query: '{query}' | top_k: {top_k}")
     
-    # Search the vector database
     results = search_similar(
         query=query,
         top_k=top_k,
         content_type=content_type
     )
     
-    # Check relevance
     is_relevant = check_context_relevance(query, results, RELEVANCE_THRESHOLD)
-    
-    # Prepare context for LLM
     context = prepare_context_from_results(results)
-    
-    # Calculate average score
     avg_score = sum(r.get("score", 0) for r in results) / len(results) if results else 0
     
     return {
@@ -81,27 +66,14 @@ def fallback_web_search(
     query: str,
     max_results: int = 5
 ) -> Dict[str, Any]:
-    """
-    Search the web for information when RAG context is insufficient.
-    Use this as a fallback when rag_retrieve returns low relevance scores.
-    
-    Args:
-        query: The search query
-        max_results: Maximum number of web results (default: 5)
-    
-    Returns:
-        Dictionary with web search results and formatted context
-    """
+    """Queries external web indices when local vector search results fail relevance checks."""
     print(f"🌐 [TOOL CALL] fallback_web_search | query: '{query}' | max_results: {max_results}")
     
-    # Perform web search
     search_results = web_search(
         query=query,
         max_results=max_results,
         include_answer=True
     )
-    
-    # Format as context
     context = format_web_results_as_context(search_results)
     
     return {
@@ -120,21 +92,9 @@ def hybrid_search(
     top_k: int = TOP_K,
     web_fallback: bool = True
 ) -> Dict[str, Any]:
-    """
-    Intelligent hybrid search that combines RAG and web search.
-    Automatically falls back to web search if RAG results are insufficient.
-    
-    Args:
-        query: The search query
-        top_k: Number of RAG results to retrieve
-        web_fallback: Whether to use web search as fallback (default: True)
-    
-    Returns:
-        Combined results from RAG and optionally web search
-    """
+    """Performs local retrieval and falls back to web search if local context is insufficient."""
     print(f"🔀 [TOOL CALL] hybrid_search | query: '{query}' | top_k: {top_k} | fallback: {web_fallback}")
     
-    # First, try RAG retrieval
     rag_results = rag_retrieve(query=query, top_k=top_k)
     
     combined = {
@@ -145,13 +105,11 @@ def hybrid_search(
         "combined_context": rag_results.get("context", "")
     }
     
-    # Check if we need web fallback
     if web_fallback and not rag_results.get("is_relevant", False):
         web_results = fallback_web_search(query=query)
         combined["web_results"] = web_results
         combined["used_fallback"] = True
         
-        # Combine contexts
         if web_results.get("success"):
             combined["combined_context"] = f"""
 RAG Context:
@@ -170,17 +128,7 @@ def generate_answer(
     context: str,
     include_sources: bool = True
 ) -> Dict[str, Any]:
-    """
-    Generate an answer using the Gemini LLM with provided context.
-    
-    Args:
-        query: The user's question
-        context: The context to use for answering (from rag_retrieve or web_search)
-        include_sources: Whether to ask the LLM to cite sources (default: True)
-    
-    Returns:
-        Dictionary with the generated response
-    """
+    """Synthesizes a final reply to the user prompt using the provided context blocks via the LLM."""
     print(f"💬 [TOOL CALL] generate_answer | query: '{query}' | context_len: {len(context)}")
     
     system_prompt = """You are a helpful assistant that answers questions based on the provided context.
@@ -198,22 +146,16 @@ Use the context to answer the question accurately and comprehensively."""
 
 @mcp.tool()
 def get_knowledge_base_info() -> Dict[str, Any]:
-    """
-    Get information about the knowledge base (vector database).
-    
-    Returns:
-        Dictionary with collection statistics
-    """
+    """Fetches vector store diagnostic status and record counts."""
     print("📊 [TOOL CALL] get_knowledge_base_info")
     return get_collection_info()
 
 
 def run_server():
-    """Run the MCP server"""
+    """Starts the MCP server process loop."""
     print("Starting DeepRetrieve MCP Server...")
     mcp.run()
 
 
-# Export for direct execution
 if __name__ == "__main__":
     run_server()
